@@ -65,3 +65,17 @@ export interface RollingSettings {
   customBannerMessage?: string;
   titleColor?: string; // Hex color for top title banner & theme sync
 }
+
+export interface PlacedSticker {
+  id: string;
+  emoji: string;
+  label?: string;
+  x: number; // percentage from left (0 to 100)
+  y: number; // percentage from top (0 to 100)
+  size: 'sm' | 'md' | 'lg' | 'xl'; // sm: 32px, md: 48px, lg: 64px, xl: 84px
+  rotation: number; // degrees, e.g. -25 to 25
+  zIndex: number;
+  isBadge?: boolean;
+  badgeBg?: string;
+  badgeTextColor?: string;
+}

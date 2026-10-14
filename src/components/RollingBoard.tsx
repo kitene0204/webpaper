@@ -1,12 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Student, 
   Message, 
   RollingTheme, 
-  RollingSettings 
+  RollingSettings,
+  PlacedSticker 
 } from '../types';
 import { NOTE_COLORS, FONT_OPTIONS } from '../constants/themes';
 import { GasService } from '../services/gasService';
+import { StickerDecorateLayer } from './StickerDecorateLayer';
 import { 
   Sparkles, 
   Calendar, 
@@ -14,16 +16,21 @@ import {
   Maximize2, 
   X, 
   PenTool, 
-  Heart,
-  Share2,
-  Camera,
-  Check,
-  Copy,
-  Search,
-  RotateCcw,
-  User,
-  FileText
+  Heart, 
+  Share2, 
+  Camera, 
+  Check, 
+  Copy, 
+  Search, 
+  RotateCcw, 
+  User, 
+  FileText, 
+  ArrowUpDown, 
+  ChevronDown,
+  Palette
 } from 'lucide-react';
+
+export type MessageSortOption = 'newest' | 'oldest' | 'author';
 
 interface RollingBoardProps {
   currentStudent: Student | null;
@@ -48,20 +55,119 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
   const [copiedShare, setCopiedShare] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchFilterType, setSearchFilterType] = useState<'all' | 'author' | 'content'>('all');
+  const [sortBy, setSortBy] = useState<MessageSortOption>('newest');
 
-  // Filter messages based on search query and scope
+  // Decoration Mode state
+  const [isDecoratingMode, setIsDecoratingMode] = useState<boolean>(false);
+  const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Placed Stickers per Student (persisted in localStorage)
+  const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>(() => {
+    if (!currentStudent) return [];
+    try {
+      const saved = localStorage.getItem(`rolling_stickers_${currentStudent.id}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Reload stickers when active student changes
+  useEffect(() => {
+    if (currentStudent) {
+      try {
+        const saved = localStorage.getItem(`rolling_stickers_${currentStudent.id}`);
+        setPlacedStickers(saved ? JSON.parse(saved) : []);
+      } catch {
+        setPlacedStickers([]);
+      }
+    } else {
+      setPlacedStickers([]);
+    }
+  }, [currentStudent?.id]);
+
+  const saveStickers = (newStickers: PlacedSticker[]) => {
+    setPlacedStickers(newStickers);
+    if (currentStudent) {
+      try {
+        localStorage.setItem(`rolling_stickers_${currentStudent.id}`, JSON.stringify(newStickers));
+      } catch (err) {
+        console.error('Failed to save stickers', err);
+      }
+    }
+  };
+
+  const handleAddSticker = (data: Omit<PlacedSticker, 'id' | 'zIndex'>) => {
+    const maxZ = placedStickers.reduce((max, s) => Math.max(max, s.zIndex || 1), 1);
+    const newSticker: PlacedSticker = {
+      ...data,
+      id: 'stk_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      zIndex: maxZ + 1,
+    };
+    saveStickers([...placedStickers, newSticker]);
+  };
+
+  const handleUpdateSticker = (id: string, updates: Partial<PlacedSticker>) => {
+    saveStickers(placedStickers.map((s) => (s.id === id ? { ...s, ...updates } : s)));
+  };
+
+  const handleDeleteSticker = (id: string) => {
+    saveStickers(placedStickers.filter((s) => s.id !== id));
+  };
+
+  const handleClearAllStickers = () => {
+    saveStickers([]);
+  };
+
+  // Helper to parse date to timestamp ms
+  const parseDateToMs = (dateStr?: string): number => {
+    if (!dateStr) return 0;
+    const isoStr = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T');
+    const parsed = Date.parse(isoStr);
+    if (!isNaN(parsed)) return parsed;
+    const direct = Date.parse(dateStr);
+    if (!isNaN(direct)) return direct;
+    return 0;
+  };
+
+  // Filter and sort messages based on search query, scope, and sort option
   const filteredMessages = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return messages;
+    
+    // 1. Search scope filter
+    let list = messages;
+    if (q) {
+      list = messages.filter((msg) => {
+        const authorMatch = (msg.author || '').toLowerCase().includes(q);
+        const contentMatch = (msg.content || '').toLowerCase().includes(q);
+        if (searchFilterType === 'author') return authorMatch;
+        if (searchFilterType === 'content') return contentMatch;
+        return authorMatch || contentMatch;
+      });
+    }
 
-    return messages.filter((msg) => {
-      const authorMatch = (msg.author || '').toLowerCase().includes(q);
-      const contentMatch = (msg.content || '').toLowerCase().includes(q);
-      if (searchFilterType === 'author') return authorMatch;
-      if (searchFilterType === 'content') return contentMatch;
-      return authorMatch || contentMatch;
+    // 2. Sort by option: 'newest' (최신순), 'oldest' (오래된순), 'author' (작성자 이름순)
+    return [...list].sort((a, b) => {
+      if (sortBy === 'newest') {
+        const diff = parseDateToMs(b.createdAt) - parseDateToMs(a.createdAt);
+        if (diff !== 0) return diff;
+        return (b.id || '').localeCompare(a.id || '');
+      }
+      if (sortBy === 'oldest') {
+        const diff = parseDateToMs(a.createdAt) - parseDateToMs(b.createdAt);
+        if (diff !== 0) return diff;
+        return (a.id || '').localeCompare(b.id || '');
+      }
+      if (sortBy === 'author') {
+        const authorA = (a.author || '').trim();
+        const authorB = (b.author || '').trim();
+        const cmp = authorA.localeCompare(authorB, 'ko');
+        if (cmp !== 0) return cmp;
+        return parseDateToMs(b.createdAt) - parseDateToMs(a.createdAt);
+      }
+      return 0;
     });
-  }, [messages, searchQuery, searchFilterType]);
+  }, [messages, searchQuery, searchFilterType, sortBy]);
 
   // Extract unique authors for fast 1-click filter chips
   const uniqueAuthors = useMemo(() => {
@@ -264,9 +370,9 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
             className="px-5 sm:px-8 md:px-10 pt-5 pb-1"
           >
             <div className="bg-white/95 backdrop-blur-md rounded-2xl p-3.5 sm:p-4 shadow-sm border border-slate-200/90 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                 {/* Search Input Box */}
-                <div className="relative flex-1">
+                <div className="relative flex-1 min-w-[200px]">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
@@ -287,50 +393,89 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                   )}
                 </div>
 
-                {/* Filter Scope Pills */}
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl self-start sm:self-auto shrink-0 text-xs font-semibold">
+                {/* Filter Scope Pills and Sort Dropdown Menu */}
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between sm:justify-end shrink-0">
+                  {/* Filter Scope Pills */}
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setSearchFilterType('all')}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        searchFilterType === 'all'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      전체 검색
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSearchFilterType('author')}
+                      className={`px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                        searchFilterType === 'author'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      <User className="w-3 h-3" />
+                      <span>작성자</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSearchFilterType('content')}
+                      className={`px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                        searchFilterType === 'content'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      <FileText className="w-3 h-3" />
+                      <span>내용</span>
+                    </button>
+                  </div>
+
+                  {/* Sort Dropdown Menu */}
+                  <div className="relative flex items-center shrink-0">
+                    <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 absolute left-3 pointer-events-none" />
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as MessageSortOption)}
+                      aria-label="메시지 정렬 순서 선택"
+                      className="appearance-none pl-8.5 pr-8 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-xs font-bold text-slate-700 border border-slate-200/80 focus:outline-hidden focus:ring-2 focus:ring-[#DE7272] focus:bg-white cursor-pointer transition-all shadow-2xs font-pretendard"
+                    >
+                      <option value="newest">최신순</option>
+                      <option value="oldest">오래된순</option>
+                      <option value="author">작성자 이름순</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none" />
+                  </div>
+
+                  {/* Decorate Mode Toggle Button */}
                   <button
                     type="button"
-                    onClick={() => setSearchFilterType('all')}
-                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                      searchFilterType === 'all'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-700'
+                    onClick={() => setIsDecoratingMode((prev) => !prev)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
+                      isDecoratingMode
+                        ? 'bg-amber-500 text-white ring-2 ring-amber-300 shadow-xs'
+                        : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80'
                     }`}
+                    title="스티커와 이모지로 롤링페이퍼 꾸미기"
                   >
-                    전체 검색
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSearchFilterType('author')}
-                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                      searchFilterType === 'author'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    <User className="w-3 h-3" />
-                    <span>작성자</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSearchFilterType('content')}
-                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                      searchFilterType === 'content'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    <FileText className="w-3 h-3" />
-                    <span>내용</span>
+                    <Palette className="w-3.5 h-3.5" />
+                    <span>{isDecoratingMode ? '꾸미기 닫기' : '스티커 꾸미기'}</span>
+                    {placedStickers.length > 0 && !isDecoratingMode && (
+                      <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
+                        {placedStickers.length}
+                      </span>
+                    )}
                   </button>
                 </div>
               </div>
 
               {/* Status and Quick Author Filter Chips */}
               <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-                {/* Result count & reset */}
-                <div className="flex items-center gap-2">
+                {/* Result count, sort badge & reset */}
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-slate-500 font-medium font-pretendard">
                     {searchQuery.trim() ? (
                       <>
@@ -344,6 +489,13 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                       </>
                     )}
                   </span>
+                  <span className="text-slate-300">·</span>
+                  <span className="text-[11px] text-slate-600 font-semibold bg-slate-100/90 px-2 py-0.5 rounded-md flex items-center gap-1 border border-slate-200/60">
+                    <ArrowUpDown className="w-2.5 h-2.5 text-slate-400" />
+                    {sortBy === 'newest' && '최신순 정렬'}
+                    {sortBy === 'oldest' && '오래된순 정렬'}
+                    {sortBy === 'author' && '작성자 이름순 정렬'}
+                  </span>
                   {searchQuery.trim() && (
                     <button
                       type="button"
@@ -351,7 +503,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                         setSearchQuery('');
                         setSearchFilterType('all');
                       }}
-                      className="text-[11px] text-[#DE7272] hover:text-[#c45353] font-bold flex items-center gap-1 underline cursor-pointer"
+                      className="text-[11px] text-[#DE7272] hover:text-[#c45353] font-bold flex items-center gap-1 underline cursor-pointer ml-1"
                     >
                       <RotateCcw className="w-3 h-3" />
                       <span>전체 보기</span>
@@ -395,8 +547,21 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
           </div>
         )}
 
-        {/* Board Canvas Area with Messages */}
-        <div className="p-6 sm:p-10 min-h-[500px]">
+        {/* Board Canvas Area with Messages & Decorative Stickers */}
+        <div ref={canvasContainerRef} className="relative p-6 sm:p-10 min-h-[500px]">
+          {/* Sticker Decorate Layer */}
+          <StickerDecorateLayer
+            isDecoratingMode={isDecoratingMode}
+            stickers={placedStickers}
+            themeStickers={currentTheme.stickers}
+            onAddSticker={handleAddSticker}
+            onUpdateSticker={handleUpdateSticker}
+            onDeleteSticker={handleDeleteSticker}
+            onClearAllStickers={handleClearAllStickers}
+            onCloseDecoratingMode={() => setIsDecoratingMode(false)}
+            containerRef={canvasContainerRef}
+          />
+
           {messages.length === 0 ? (
             /* Total Empty state */
             <div className="py-20 text-center max-w-md mx-auto">
@@ -409,14 +574,24 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
               <p className="text-sm text-slate-600 mb-6 font-gowun">
                 {studentName}에게 첫 번째 축하와 응원의 메시지를 남겨보세요.
               </p>
-              <button
-                type="button"
-                onClick={onOpenCompose}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#DE7272] to-[#FFCA88] hover:from-[#c95d5d] hover:to-[#f0b56e] text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer"
-              >
-                <PenTool className="w-4 h-4" />
-                <span>첫 메시지 쓰러 가기</span>
-              </button>
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={onOpenCompose}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#DE7272] to-[#FFCA88] hover:from-[#c95d5d] hover:to-[#f0b56e] text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer"
+                >
+                  <PenTool className="w-4 h-4" />
+                  <span>첫 메시지 쓰러 가기</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDecoratingMode(true)}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-sm shadow-xs transition-all active:scale-95 cursor-pointer"
+                >
+                  <Palette className="w-4 h-4 text-amber-600" />
+                  <span>스티커로 꾸미기</span>
+                </button>
+              </div>
             </div>
           ) : filteredMessages.length === 0 ? (
             /* Search Empty state */
@@ -629,26 +804,48 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
         </div>
       </div>
 
-      {/* Floating Action Bar (Write Message & Export Image) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-full shadow-2xl border border-[#FFCA88]/50">
-        <button
-          type="button"
-          onClick={onOpenCompose}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#DE7272] to-[#FFCA88] hover:from-[#c95d5d] hover:to-[#f0b56e] text-white font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95 cursor-pointer"
+      {/* Floating Action Bar (Write Message, Decorate Mode, Export Image) */}
+      {!isDecoratingMode && (
+        <div 
+          data-html2canvas-ignore="true"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 sm:gap-3 bg-white/95 backdrop-blur-md px-3 sm:px-4 py-2.5 rounded-full shadow-2xl border border-[#FFCA88]/50"
         >
-          <PenTool className="w-4 h-4" />
-          <span>{studentName}에게 글 남기기</span>
-        </button>
+          <button
+            type="button"
+            onClick={onOpenCompose}
+            className="flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full bg-gradient-to-r from-[#DE7272] to-[#FFCA88] hover:from-[#c95d5d] hover:to-[#f0b56e] text-white font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95 cursor-pointer"
+          >
+            <PenTool className="w-4 h-4" />
+            <span className="hidden sm:inline">{studentName}에게</span>
+            <span>글 남기기</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={onExportImage}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95 cursor-pointer"
-        >
-          <Camera className="w-4 h-4 text-[#FFF6A9]" />
-          <span>고화질 이미지 저장</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => setIsDecoratingMode(true)}
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95 cursor-pointer"
+            title="스티커와 이모지로 롤링페이퍼 꾸미기"
+          >
+            <Palette className="w-4 h-4 text-amber-600" />
+            <span>스티커 꾸미기</span>
+            {placedStickers.length > 0 && (
+              <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
+                {placedStickers.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onExportImage}
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95 cursor-pointer"
+          >
+            <Camera className="w-4 h-4 text-[#FFF6A9]" />
+            <span className="hidden sm:inline">고화질</span>
+            <span>이미지 저장</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
