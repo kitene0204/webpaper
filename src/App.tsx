@@ -27,10 +27,11 @@ export default function App() {
     layout: 'sticky',
     font: 'himelody',
     schoolClass: '3학년 2반',
-    boardTitle: '🎂 김민준의 특별한 생일을 진심으로 축하해! 🎈',
+    boardTitle: '🎂 김민준의 특별한 생일을 축하해! 🎉',
     showDate: true,
     showAuthorBadge: true,
     bgTexture: 'dots',
+    titleColor: THEMES.birthday.primaryColor,
   });
 
   // Modals state
@@ -70,6 +71,7 @@ export default function App() {
           ...s,
           theme: themeId,
           boardTitle: THEMES[themeId].defaultTitleTemplate(found!.name),
+          titleColor: THEMES[themeId].primaryColor,
         }));
         return;
       }
@@ -88,6 +90,7 @@ export default function App() {
             ...s,
             theme: themeId,
             boardTitle: THEMES[themeId].defaultTitleTemplate(initial.name),
+            titleColor: THEMES[themeId].primaryColor,
           }));
           return initial;
         });
@@ -125,6 +128,7 @@ export default function App() {
       ...prev,
       theme: themeToApply,
       boardTitle: THEMES[themeToApply].defaultTitleTemplate(student.name),
+      titleColor: THEMES[themeToApply].primaryColor,
     }));
   };
 
@@ -140,6 +144,7 @@ export default function App() {
         theme: appliedTheme,
         schoolClass: gradeClass,
         boardTitle: THEMES[appliedTheme].defaultTitleTemplate(res.student.name),
+        titleColor: THEMES[appliedTheme].primaryColor,
       }));
     }
   };
@@ -246,6 +251,7 @@ export default function App() {
       <StudentBar
         students={students}
         currentStudent={currentStudent}
+        currentTheme={currentTheme}
         onSelectStudent={handleSelectStudent}
         onOpenAddStudent={() => setIsStudentModalOpen(true)}
       />

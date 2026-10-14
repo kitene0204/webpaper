@@ -1,12 +1,13 @@
 import React from 'react';
 import { Plus, Users, ChevronRight, UserPlus } from 'lucide-react';
-import { Student } from '../types';
+import { Student, RollingTheme } from '../types';
 
 interface StudentBarProps {
   students: Student[];
   currentStudent: Student | null;
   onSelectStudent: (student: Student) => void;
   onOpenAddStudent: () => void;
+  currentTheme?: RollingTheme;
 }
 
 export const StudentBar: React.FC<StudentBarProps> = ({
@@ -14,7 +15,10 @@ export const StudentBar: React.FC<StudentBarProps> = ({
   currentStudent,
   onSelectStudent,
   onOpenAddStudent,
+  currentTheme,
 }) => {
+  const activeColor = currentTheme?.primaryColor || '#DE7272';
+
   return (
     <div className="bg-white border-b border-slate-200/80 py-2.5 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -38,9 +42,10 @@ export const StudentBar: React.FC<StudentBarProps> = ({
                 key={student.id || student.name}
                 type="button"
                 onClick={() => onSelectStudent(student)}
+                style={isSelected ? { backgroundColor: activeColor } : undefined}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                   isSelected
-                    ? 'bg-[#DE7272] text-white shadow-sm scale-105 ring-2 ring-[#FFCA88] ring-offset-1'
+                    ? 'text-white shadow-sm scale-105 ring-2 ring-[#FFCA88] ring-offset-1'
                     : 'bg-[#FFFDE8] hover:bg-[#FFF6A9] text-slate-700 border border-[#FFCA88]/50'
                 }`}
               >
@@ -61,7 +66,8 @@ export const StudentBar: React.FC<StudentBarProps> = ({
         <button
           type="button"
           onClick={onOpenAddStudent}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-dashed border-[#DE7272] hover:border-[#DE7272] bg-[#DE7272]/10 hover:bg-[#DE7272]/20 text-[#DE7272] text-xs font-bold transition-all shrink-0 cursor-pointer"
+          style={{ borderColor: activeColor, color: activeColor }}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-dashed hover:bg-slate-50 text-xs font-bold transition-all shrink-0 cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>학생 추가</span>

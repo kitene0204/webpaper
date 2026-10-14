@@ -54,7 +54,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           
           {/* Logo & Title */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#DE7272] via-[#FFCA88] to-[#FFF6A9] flex items-center justify-center text-xl shadow-xs border border-[#FFCA88]/50">
+            <div 
+              style={{ backgroundColor: settings.titleColor || currentTheme.primaryColor }}
+              className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shadow-xs border border-white/40 text-white transition-colors duration-300"
+            >
               {currentTheme.bannerIcon}
             </div>
             <div>
@@ -98,7 +101,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={onOpenComposeModal}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#DE7272] to-[#FFCA88] hover:from-[#cc6363] hover:to-[#f0b771] text-white font-bold text-sm shadow-xs transition-all active:scale-95 cursor-pointer"
+              style={{ backgroundColor: settings.titleColor || currentTheme.primaryColor }}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl hover:brightness-95 text-white font-bold text-sm shadow-xs transition-all active:scale-95 cursor-pointer"
             >
               <PenTool className="w-4 h-4" />
               <span>메시지 남기기</span>
@@ -125,7 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-[#FFCA88] hover:bg-[#FFFDE8] transition-colors text-xs sm:text-sm font-semibold text-slate-700 cursor-pointer"
               title="롤링페이퍼 테마 및 레이아웃 설정"
             >
-              <Palette className="w-4 h-4 text-[#DE7272]" />
+              <Palette className="w-4 h-4" style={{ color: settings.titleColor || currentTheme.primaryColor }} />
               <span className="hidden md:inline">디자인 설정</span>
             </button>
 

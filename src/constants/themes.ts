@@ -14,13 +14,16 @@ export const THEMES: Record<string, RollingTheme> = {
     badge: '생일 파티',
     tagline: '세상에서 가장 특별한 너의 생일을 진심으로 축하해!',
     description: '알록달록 풍선과 케이크, 따뜻한 축하 메시지로 가득 채우는 생일 롤링페이퍼',
-    primaryColor: '#DE7272',
+    primaryColor: '#DE7272', // 따뜻하고 화사한 코랄 핑크
     accentBg: '#FFF6A9',
-    bannerGradient: 'bg-[#DE7272]', // Solid color (no gradient as requested)
+    bannerGradient: 'bg-[#DE7272]',
     boardBg: 'bg-[#FFFDE8]',
     boardPatternClass: 'bg-dot-pastel',
     bannerIcon: '🎂',
-    defaultTitleTemplate: (name) => `🎂 ${name}의 특별한 생일을 진심으로 축하해! 🎈`,
+    titleTextColor: 'text-white',
+    badgeClass: 'bg-[#FFF6A9] text-[#6d4411] border-[#FFCA88]',
+    cardCounterClass: 'text-[#FFF6A9]',
+    defaultTitleTemplate: (name) => `🎂 ${name}의 특별한 생일을 축하해! 🎉`,
     stickers: [
       { id: 'b1', emoji: '🎂', label: '케이크' },
       { id: 'b2', emoji: '🎉', label: '폭죽' },
@@ -45,13 +48,16 @@ export const THEMES: Record<string, RollingTheme> = {
     badge: '추억과 응원',
     tagline: '함께했던 소중한 시간 잊지 않을게, 새로운 곳에서도 반짝이길!',
     description: '다른 곳으로 떠나는 친구에게 고마움과 영원한 우정의 마음을 전해요',
-    primaryColor: '#DE7272',
-    accentBg: '#FFF6A9',
-    bannerGradient: 'bg-[#DE7272]', // Solid color (no gradient)
-    boardBg: 'bg-[#FFFDE8]',
+    primaryColor: '#3E72A8', // 아련하고 포근한 하늘빛 인디고 블루
+    accentBg: '#E0F2FE',
+    bannerGradient: 'bg-[#3E72A8]',
+    boardBg: 'bg-[#F0F6FA]',
     boardPatternClass: 'bg-dot-pastel',
     bannerIcon: '✈️',
-    defaultTitleTemplate: (name) => `👋 ${name}야, 어디서든 반짝일 널 항상 기억할게! ✈️`,
+    titleTextColor: 'text-white',
+    badgeClass: 'bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]',
+    cardCounterClass: 'text-[#BAE6FD]',
+    defaultTitleTemplate: (name) => `👋 ${name}야, 새로운 시작을 늘 응원할게! ✈️`,
     stickers: [
       { id: 'f1', emoji: '✈️', label: '비행기' },
       { id: 'f2', emoji: '💌', label: '편지' },
@@ -76,13 +82,16 @@ export const THEMES: Record<string, RollingTheme> = {
     badge: '두근두근 환영',
     tagline: '우리 반에 온 걸 두 팔 벌려 환영해! 함께 즐거운 추억 만들자!',
     description: '새로 전학 온 친구가 어색하지 않도록 따뜻한 환영의 인사를 남겨요',
-    primaryColor: '#DE7272',
-    accentBg: '#FFF6A9',
-    bannerGradient: 'bg-[#DE7272]', // Solid color (no gradient)
-    boardBg: 'bg-[#FFFDE8]',
+    primaryColor: '#E05D84', // 화사하고 설레는 벚꽃 로즈 핑크
+    accentBg: '#FCE7F3',
+    bannerGradient: 'bg-[#E05D84]',
+    boardBg: 'bg-[#FFF5F7]',
     boardPatternClass: 'bg-dot-pastel',
     bannerIcon: '🌈',
-    defaultTitleTemplate: (name) => `🌸 우리 반에 온 ${name}을(를) 두 팔 벌려 환영해! 🌈`,
+    titleTextColor: 'text-white',
+    badgeClass: 'bg-[#FCE7F3] text-[#9D174D] border-[#FBCFE8]',
+    cardCounterClass: 'text-[#FBCFE8]',
+    defaultTitleTemplate: (name) => `🌸 우리 반에 온 ${name}을(를) 환영해! 🌈`,
     stickers: [
       { id: 'w1', emoji: '🌸', label: '벚꽃' },
       { id: 'w2', emoji: '🌈', label: '무지개' },
@@ -107,13 +116,16 @@ export const THEMES: Record<string, RollingTheme> = {
     badge: '새로운 시작',
     tagline: '한 해 동안 함께 울고 웃었던 우리, 더 넓은 세상을 향해 날아오르자!',
     description: '초·중·고 졸업식 및 종업식에서 1년 동안의 추억을 나누는 롤링페이퍼',
-    primaryColor: '#DE7272',
-    accentBg: '#FFF6A9',
-    bannerGradient: 'bg-[#DE7272]', // Solid color (no gradient)
+    primaryColor: '#1A4231', // 칠판 & 학사모에 어울리는 클래식 딥 포레스트 그린
+    accentBg: '#FEF3C7',
+    bannerGradient: 'bg-[#1A4231]',
     boardBg: '#1e3a2b',
     boardPatternClass: 'bg-grid-chalkboard',
     bannerIcon: '🎓',
-    defaultTitleTemplate: (name) => `🎓 빛나는 ${name}의 졸업을 축하하며, 꿈을 향해 날아올라! 🌟`,
+    titleTextColor: 'text-[#FFF6A9]', // 황금빛 샴페인 텍스트로 칠판 그린과 완벽한 조화
+    badgeClass: 'bg-[#FFF6A9] text-[#543d0b] border-[#FFCA88]',
+    cardCounterClass: 'text-[#FFF6A9]',
+    defaultTitleTemplate: (name) => `🎓 ${name}의 빛나는 졸업을 축하해! 🌟`,
     stickers: [
       { id: 'g1', emoji: '🎓', label: '학사모' },
       { id: 'g2', emoji: '💐', label: '꽃다발' },
@@ -138,13 +150,16 @@ export const THEMES: Record<string, RollingTheme> = {
     badge: '따뜻한 마음',
     tagline: '평소에 전하지 못했던 칭찬과 고마운 마음을 아낌없이 보내요!',
     description: '시험 응원, 스승의 날, 친구 사랑 주간 등 자유로운 주제로 활용해요',
-    primaryColor: '#DE7272',
-    accentBg: '#FFF6A9',
-    bannerGradient: 'bg-[#DE7272]', // Solid color (no gradient)
-    boardBg: 'bg-[#FFFDE8]',
+    primaryColor: '#268050', // 싱그럽고 따뜻한 클로버 에메랄드 그린
+    accentBg: '#D1FAE5',
+    bannerGradient: 'bg-[#268050]',
+    boardBg: 'bg-[#F2FAF5]',
     boardPatternClass: 'bg-dot-pastel',
     bannerIcon: '🍀',
-    defaultTitleTemplate: (name) => `🍀 ${name}에게 전하는 사랑 가득 칭찬 & 우정 롤링페이퍼 💛`,
+    titleTextColor: 'text-white',
+    badgeClass: 'bg-[#D1FAE5] text-[#065F46] border-[#A7F3D0]',
+    cardCounterClass: 'text-[#A7F3D0]',
+    defaultTitleTemplate: (name) => `🍀 ${name}에게 전하는 따뜻한 응원 한마디! ✨`,
     stickers: [
       { id: 'c1', emoji: '🍀', label: '클로버' },
       { id: 'c2', emoji: '💛', label: '노란하트' },
@@ -163,6 +178,17 @@ export const THEMES: Record<string, RollingTheme> = {
     ],
   },
 };
+
+export const PRESET_TITLE_COLORS = [
+  { name: '생일 코랄', hex: '#DE7272', themeId: 'birthday' },
+  { name: '석별 인디고', hex: '#3E72A8', themeId: 'farewell' },
+  { name: '환영 벚꽃로즈', hex: '#E05D84', themeId: 'welcome' },
+  { name: '졸업 포레스트', hex: '#1A4231', themeId: 'graduation' },
+  { name: '응원 클로버', hex: '#268050', themeId: 'cheering' },
+  { name: '따스한 살구피치', hex: '#E27D60' },
+  { name: '은은한 라벤더', hex: '#7E639E' },
+  { name: '심플 슬레이트', hex: '#334155' },
+];
 
 export const LAYOUT_OPTIONS: { id: LayoutId; name: string; desc: string; icon: string }[] = [
   {

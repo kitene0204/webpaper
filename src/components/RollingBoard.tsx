@@ -51,6 +51,12 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
     day: 'numeric',
   });
 
+  // Dynamic banner & title styling that harmoniously adapts to active theme
+  const bannerBgColor = settings.titleColor || currentTheme.primaryColor;
+  const titleTextColor = currentTheme.titleTextColor || 'text-white';
+  const badgeClass = currentTheme.badgeClass || 'bg-[#FFF6A9] text-[#6d4411] border-[#FFCA88]';
+  const cardCounterClass = currentTheme.cardCounterClass || 'text-[#FFF6A9]';
+
   // Background styling based on theme and settings
   const getBoardBgStyle = () => {
     if (settings.layout === 'corkboard') {
@@ -119,48 +125,54 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
         id="rolling-paper-capture-target"
         className={`max-w-6xl mx-auto my-6 rounded-3xl shadow-xl overflow-hidden border border-[#FFCA88]/40 transition-colors ${getBoardBgStyle()}`}
       >
-        {/* Top Celebration Header Banner - Solid #DE7272 (No gradient as requested) */}
+        {/* Top Celebration Header Banner with Theme Harmonious Color */}
         <div
-          className="relative px-6 py-8 sm:px-10 sm:py-9 bg-[#DE7272] text-white shadow-md overflow-hidden"
+          style={{ backgroundColor: bannerBgColor }}
+          className="relative px-5 py-6 sm:px-8 sm:py-8 md:px-10 shadow-md overflow-hidden transition-colors duration-300 text-white"
         >
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2.5 flex-1 min-w-0 pr-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-3 py-1 rounded-full bg-[#FFF6A9] text-[#6d4411] border border-[#FFCA88] text-xs font-bold tracking-wide uppercase shadow-xs">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 md:gap-6">
+            <div className="space-y-2 flex-1 min-w-0 pr-0 md:pr-4">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase shadow-xs border shrink-0 ${badgeClass}`}>
                   {settings.schoolClass || '우리 반'}
                 </span>
-                <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/30">
+                <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/30 shrink-0">
                   {currentTheme.badge}
                 </span>
                 {settings.showDate && (
-                  <span className="flex items-center gap-1 text-xs text-white/90 ml-1 font-pretendard">
+                  <span className="flex items-center gap-1 text-xs text-white/90 ml-1 font-pretendard shrink-0">
                     <Calendar className="w-3.5 h-3.5" />
                     <span>{currentDate}</span>
                   </span>
                 )}
               </div>
 
-              {/* Title with Pretendard 600 & Natural Korean Word-Break (break-keep) */}
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-title font-semibold tracking-tight text-white drop-shadow-xs leading-snug break-keep">
-                {boardTitle}
-              </h1>
+              {/* Title strictly guaranteed to be on ONE single line (whitespace-nowrap with responsive sizing and ellipsis) */}
+              <div className="overflow-hidden">
+                <h1 
+                  title={boardTitle}
+                  className={`text-lg sm:text-2xl md:text-[26px] lg:text-3xl xl:text-4xl font-title font-semibold tracking-tight ${titleTextColor} drop-shadow-xs leading-normal whitespace-nowrap overflow-hidden text-ellipsis`}
+                >
+                  {boardTitle}
+                </h1>
+              </div>
 
-              <p className="text-sm sm:text-base text-white/95 font-pretendard break-keep">
+              <p className="text-xs sm:text-sm md:text-base text-white/95 font-pretendard whitespace-nowrap overflow-hidden text-ellipsis">
                 {currentTheme.tagline}
               </p>
             </div>
 
             {/* Student Profile Card & Counter on Banner */}
-            <div className="flex items-center gap-4 bg-white/20 backdrop-blur-md p-4 rounded-2xl border border-white/30 self-start md:self-auto shrink-0 shadow-xs">
-              <div className="w-14 h-14 rounded-2xl bg-white text-slate-800 flex items-center justify-center text-3xl shadow-sm">
+            <div className="flex items-center gap-3.5 bg-white/20 backdrop-blur-md px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl border border-white/30 self-start md:self-auto shrink-0 shadow-xs">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white text-slate-800 flex items-center justify-center text-2xl sm:text-3xl shadow-sm">
                 {currentTheme.bannerIcon}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/80 font-bold">
+                <div className="text-[11px] uppercase tracking-wider text-white/80 font-bold">
                   주인공
                 </div>
-                <div className="text-xl font-title font-semibold text-white">{studentName}</div>
-                <div className="text-xs text-[#FFF6A9] font-bold mt-0.5">
+                <div className="text-lg sm:text-xl font-title font-semibold text-white leading-tight">{studentName}</div>
+                <div className={`text-xs font-bold mt-0.5 ${cardCounterClass}`}>
                   총 {messages.length}개의 따뜻한 메시지
                 </div>
                 {currentStudent && (

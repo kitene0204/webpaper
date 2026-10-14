@@ -25,6 +25,9 @@ export interface RollingTheme {
   stickers: Sticker[];
   suggestedPrompts: string[];
   bannerIcon: string;
+  titleTextColor?: string;
+  badgeClass?: string;
+  cardCounterClass?: string;
 }
 
 export interface Student {
@@ -60,4 +63,5 @@ export interface RollingSettings {
   showAuthorBadge: boolean;
   bgTexture: 'dots' | 'grid' | 'plain' | 'cork';
   customBannerMessage?: string;
+  titleColor?: string; // Hex color for top title banner & theme sync
 }
