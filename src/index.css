@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* Title Font: Pretendard 600 */
+  .font-title {
+    font-family: 'Pretendard', sans-serif;
+    font-weight: 600;
+  }
+  .font-pretendard {
+    font-family: 'Pretendard', sans-serif;
+  }
+
+  /* Kids' handwriting fonts */
+  .font-himelody {
+    font-family: 'Hi Melody', cursive;
+  }
+  .font-gamja {
+    font-family: 'Gamja Flower', cursive;
+  }
+  .font-poorstory {
+    font-family: 'Poor Story', cursive;
+  }
+
+  /* Custom Warm Palette Utilities */
+  .bg-palette-coral {
+    background-color: #DE7272;
+  }
+  .bg-palette-peach {
+    background-color: #FFCA88;
+  }
+  .bg-palette-butter {
+    background-color: #FFF6A9;
+  }
+  .text-palette-coral {
+    color: #DE7272;
+  }
+  .border-palette-coral {
+    border-color: #DE7272;
+  }
+  .border-palette-peach {
+    border-color: #FFCA88;
+  }
+  .border-palette-butter {
+    border-color: #FFF6A9;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Background patterns */
+.bg-grid-chalkboard {
+  background-color: #1e3a2b;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+.bg-dot-pastel {
+  background-image: radial-gradient(rgba(217, 119, 6, 0.15) 1.5px, transparent 1.5px);
+  background-size: 20px 20px;
+}
+
+.bg-dot-blue {
+  background-image: radial-gradient(rgba(59, 130, 246, 0.15) 1.5px, transparent 1.5px);
+  background-size: 20px 20px;
+}
+
+.bg-dot-pink {
+  background-image: radial-gradient(rgba(244, 63, 94, 0.15) 1.5px, transparent 1.5px);
+  background-size: 20px 20px;
+}
+
+/* Tape effect for sticky notes with requested palette */
+.tape-top {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 24px;
+  background-color: rgba(255, 246, 169, 0.85);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-left: 2px dashed rgba(222, 114, 114, 0.4);
+  border-right: 2px dashed rgba(222, 114, 114, 0.4);
+  pointer-events: none;
+}

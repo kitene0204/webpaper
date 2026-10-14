@@ -1,0 +1,6 @@
+{
+  "name": "우리반 롤링페이퍼 (Class Rolling Paper)",
+  "description": "학생별 구글 시트 연동과 다양한 테마(생일, 전학, 졸업)를 지원하고 이미지 다운로드가 가능한 웹 롤링페이퍼",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
