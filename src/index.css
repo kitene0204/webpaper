@@ -21,6 +21,12 @@
     font-family: 'Poor Story', cursive;
   }
 
+  /* Natural Korean word break */
+  .break-keep {
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+
   /* Custom Warm Palette Utilities */
   .bg-palette-coral {
     background-color: #DE7272;

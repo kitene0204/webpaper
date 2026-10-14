@@ -269,7 +269,10 @@ const INITIAL_MESSAGES: Record<string, Message[]> = {
 };
 
 export class GasService {
-  private static gasUrl: string = localStorage.getItem(STORAGE_KEY_GAS_URL) || '';
+  private static gasUrl: string = 
+    localStorage.getItem(STORAGE_KEY_GAS_URL) || 
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GAS_URL) || 
+    '';
 
   public static getGasUrl(): string {
     return this.gasUrl;

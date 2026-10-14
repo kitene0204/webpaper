@@ -83,7 +83,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
             </div>
             <div className="p-5 rounded-2xl bg-[#FFFDE8] border border-[#FFCA88]/70 my-3">
               <p
-                className={`text-lg leading-relaxed text-slate-800 whitespace-pre-wrap ${
+                className={`text-lg leading-relaxed text-slate-800 whitespace-pre-wrap break-keep ${
                   FONT_OPTIONS.find((f) => f.id === selectedMessage.font)?.fontClass || 'font-himelody'
                 }`}
               >
@@ -120,7 +120,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
           className="relative px-6 py-8 sm:px-10 sm:py-9 bg-[#DE7272] text-white shadow-md overflow-hidden"
         >
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2.5 max-w-2xl">
+            <div className="space-y-2.5 flex-1 min-w-0 pr-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-3 py-1 rounded-full bg-[#FFF6A9] text-[#6d4411] border border-[#FFCA88] text-xs font-bold tracking-wide uppercase shadow-xs">
                   {settings.schoolClass || '우리 반'}
@@ -136,12 +136,12 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                 )}
               </div>
 
-              {/* Title with Pretendard 600 */}
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-title font-semibold tracking-tight text-white drop-shadow-xs leading-tight">
+              {/* Title with Pretendard 600 & Natural Korean Word-Break (break-keep) */}
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-title font-semibold tracking-tight text-white drop-shadow-xs leading-snug break-keep">
                 {boardTitle}
               </h1>
 
-              <p className="text-sm sm:text-base text-white/95 font-pretendard">
+              <p className="text-sm sm:text-base text-white/95 font-pretendard break-keep">
                 {currentTheme.tagline}
               </p>
             </div>
@@ -219,7 +219,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
 
                         {/* Note Content */}
                         <p
-                          className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 line-clamp-6 whitespace-pre-wrap`}
+                          className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 line-clamp-6 whitespace-pre-wrap break-keep`}
                         >
                           {msg.content}
                         </p>
@@ -262,7 +262,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                           </div>
                           <span className="text-[11px] text-slate-400">{msg.createdAt.split(' ')[0]}</span>
                         </div>
-                        <p className={`text-base text-slate-700 leading-relaxed ${fontCls} my-2 whitespace-pre-wrap line-clamp-5`}>
+                        <p className={`text-base text-slate-700 leading-relaxed ${fontCls} my-2 whitespace-pre-wrap line-clamp-5 break-keep`}>
                           {msg.content}
                         </p>
                         <div className="pt-2 text-right">
@@ -298,7 +298,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                         >
                           <div className="text-2xl absolute top-2 right-2">{msg.sticker}</div>
                           <p
-                            className={`text-sm text-slate-800 ${fontCls} mt-4 line-clamp-4 leading-relaxed`}
+                            className={`text-sm text-slate-800 ${fontCls} mt-4 line-clamp-4 leading-relaxed break-keep`}
                           >
                             {msg.content}
                           </p>
@@ -341,7 +341,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                           </span>
                         </div>
 
-                        <p className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 line-clamp-5`}>
+                        <p className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 line-clamp-5 break-keep`}>
                           {msg.content}
                         </p>
 

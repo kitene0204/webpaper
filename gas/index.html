@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우리반 롤링페이퍼 - 마음을 전하는 롤링페이퍼</title>
+
+  <!-- Pretendard (제목 폰트: font-weight 600) -->
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+
+  <!-- 아이들이 적는 글 폰트 3종: Hi Melody, Gamja Flower, Poor Story -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gamja+Flower&family=Hi+Melody&family=Poor+Story&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS & 외부 라이브러리 CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <style>
+    /* 폰트 유틸리티 */
+    .font-title {
+      font-family: 'Pretendard', sans-serif;
+      font-weight: 600;
+    }
+    .font-pretendard {
+      font-family: 'Pretendard', sans-serif;
+    }
+    .font-himelody {
+      font-family: 'Hi Melody', cursive;
+    }
+    .font-gamja {
+      font-family: 'Gamja Flower', cursive;
+    }
+    .font-poorstory {
+      font-family: 'Poor Story', cursive;
+    }
+
+    /* 포스트잇 상단 마스킹 테이프 */
+    .tape-top {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 76px;
+      height: 24px;
+      background-color: rgba(255, 246, 169, 0.85);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      border-left: 2px dashed rgba(222, 114, 114, 0.4);
+      border-right: 2px dashed rgba(222, 114, 114, 0.4);
+      pointer-events: none;
+    }
+
+    .bg-dot-pattern {
+      background-image: radial-gradient(rgba(222, 114, 114, 0.15) 1.5px, transparent 1.5px);
+      background-size: 20px 20px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased font-pretendard">
+
+  <!-- 상단 네비게이션 -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      
+      <!-- 로고 & 학급명 -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#DE7272] via-[#FFCA88] to-[#FFF6A9] flex items-center justify-center text-xl shadow-xs border border-[#FFCA88]/50" id="nav-icon">
+          🎂
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-lg tracking-tight text-slate-800 font-title">
+              우리반 롤링페이퍼
+            </span>
+            <span class="text-xs px-2.5 py-0.5 rounded-full font-bold bg-[#FFF6A9] text-[#6d4411] border border-[#FFCA88]" id="nav-class-badge">
+              3학년 2반
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 hidden sm:block">
+            친구들의 마음을 모아 따뜻한 이미지로 간직해요
+          </p>
+        </div>
+      </div>
+
+      <!-- 상단 액션 버튼 -->
+      <div class="flex items-center gap-2">
+        <!-- 글쓰기 버튼 -->
+        <button onclick="openModal('composeModal')" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#DE7272] to-[#FFCA88] hover:from-[#c95d5d] hover:to-[#f0b56e] text-white font-bold text-sm shadow-xs transition-all active:scale-95 cursor-pointer">
+          <span>✏️ 메시지 남기기</span>
+        </button>
+
+        <!-- 디자인 설정 버튼 -->
+        <button onclick="openModal('settingsModal')" class="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#FFCA88] hover:bg-[#FFFDE8] transition-colors text-xs sm:text-sm font-semibold text-slate-700 cursor-pointer">
+          <span>🎨 디자인 설정</span>
+        </button>
+
+        <!-- 이미지 저장 버튼 -->
+        <button onclick="exportToImage()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold shadow-xs transition-all active:scale-95 cursor-pointer">
+          <span class="text-[#FFF6A9]">📸</span>
+          <span>이미지 저장</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- 학생 선택 바 -->
+  <div class="bg-white border-b border-slate-200/80 py-2.5 px-4 sm:px-6">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center gap-2 shrink-0">
+        <div class="w-7 h-7 rounded-lg bg-[#FFF6A9] text-[#6d4411] flex items-center justify-center font-bold text-xs border border-[#FFCA88]">
+          👥
+        </div>
+        <span class="text-xs text-slate-800 font-title" id="student-count-label">
+          우리 반 학생들
+        </span>
+      </div>
+
+      <!-- 학생 알약 리스트 -->
+      <div class="flex items-center gap-2 overflow-x-auto py-0.5 max-w-3xl" id="student-pills">
+        <!-- JS로 동적 렌더링 -->
+      </div>
+
+      <!-- 학생 추가 버튼 -->
+      <button onclick="openModal('studentModal')" class="flex items-center gap-1 px-3 py-1.5 rounded-full border border-dashed border-[#DE7272] bg-[#DE7272]/10 hover:bg-[#DE7272]/20 text-[#DE7272] text-xs font-bold transition-all shrink-0 cursor-pointer">
+        <span>+ 학생 추가</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 메인 롤링페이퍼 보드 (html2canvas 캡처 대상) -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-28">
+    <div id="rolling-paper-capture-target" class="rounded-3xl shadow-xl overflow-hidden border border-[#FFCA88]/40 bg-[#FFFDE8] bg-dot-pattern transition-colors">
+      
+      <!-- 상단 배너 (단색 #DE7272, 그라데이션 없음, Pretendard 600 제목) -->
+      <div class="px-6 py-8 sm:px-10 sm:py-9 bg-[#DE7272] text-white shadow-md relative">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div class="space-y-2.5 max-w-2xl">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="px-3 py-1 rounded-full bg-[#FFF6A9] text-[#6d4411] border border-[#FFCA88] text-xs font-bold tracking-wide uppercase shadow-xs" id="board-class-tag">
+                3학년 2반
+              </span>
+              <span class="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/30" id="board-theme-badge">
+                생일 파티
+              </span>
+              <span class="text-xs text-white/90 ml-1 font-pretendard" id="board-date">
+                2026년 10월
+              </span>
+            </div>
+
+            <!-- Pretendard 600 적용된 제목 -->
+            <h1 class="text-2xl sm:text-3xl lg:text-4xl font-title tracking-tight text-white drop-shadow-xs leading-tight" id="board-title">
+              🎂 김민준의 특별한 생일을 진심으로 축하해! 🎈
+            </h1>
+
+            <p class="text-sm sm:text-base text-white/95 font-pretendard" id="board-tagline">
+              세상에서 가장 특별한 너의 생일을 진심으로 축하해!
+            </p>
+          </div>
+
+          <!-- 주인공 프로필 카드 -->
+          <div class="flex items-center gap-4 bg-white/20 backdrop-blur-md p-4 rounded-2xl border border-white/30 self-start md:self-auto shrink-0 shadow-xs">
+            <div class="w-14 h-14 rounded-2xl bg-white text-slate-800 flex items-center justify-center text-3xl shadow-sm" id="board-avatar">
+              🎂
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wider text-white/80 font-bold">주인공</div>
+              <div class="text-xl font-title text-white" id="board-student-name">김민준</div>
+              <div class="text-xs text-[#FFF6A9] font-bold mt-0.5" id="board-msg-count">
+                총 0개의 따뜻한 메시지
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 메시지 캔버스 영역 -->
+      <div class="p-6 sm:p-10 min-h-[480px]">
+        <div id="messages-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-start">
+          <!-- JS로 동적 렌더링 -->
+        </div>
+
+        <!-- 메시지가 없을 때 빈 화면 -->
+        <div id="empty-state" class="hidden py-20 text-center max-w-md mx-auto">
+          <div class="w-20 h-20 mx-auto rounded-3xl bg-white shadow-md flex items-center justify-center text-4xl mb-4">
+            💌
+          </div>
+          <h3 class="text-xl font-title text-slate-800 mb-2">
+            아직 작성된 메시지가 없어요!
+          </h3>
+          <p class="text-sm text-slate-600 mb-6">
+            친구에게 첫 번째 축하와 응원의 메시지를 남겨보세요.
+          </p>
+          <button onclick="openModal('composeModal')" class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#DE7272] to-[#FFCA88] hover:from-[#c95d5d] hover:to-[#f0b56e] text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer">
+            <span>첫 메시지 쓰러 가기 ✏️</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 롤링페이퍼 하단 워터마크 -->
+      <div class="px-6 py-4 bg-black/5 border-t border-black/5 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+        <span id="footer-stamp">✨ 우리 반 롤링페이퍼 · 소중한 추억</span>
+        <span class="text-[11px] text-slate-400">이미지로 저장해 평생 간직하세요</span>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- 하단 플로팅 바 -->
+  <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-full shadow-2xl border border-[#FFCA88]/50">
+    <button onclick="openModal('composeModal')" class="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#DE7272] to-[#FFCA88] hover:from-[#c95d5d] hover:to-[#f0b56e] text-white font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95 cursor-pointer">
+      <span id="floating-btn-text">김민준에게 글 남기기 ✏️</span>
+    </button>
+    <button onclick="exportToImage()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95 cursor-pointer">
+      <span class="text-[#FFF6A9]">📸</span>
+      <span>고화질 이미지 저장</span>
+    </button>
+  </div>
+
+  <!-- 1. 메시지 작성 모달 -->
+  <div id="composeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[92vh]">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-[#DE7272]/15 via-[#FFCA88]/25 to-[#FFF6A9]/40">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-[#DE7272] text-white flex items-center justify-center text-xl shadow-xs">✏️</div>
+          <div>
+            <h2 class="text-lg font-title text-slate-800">롤링페이퍼 메시지 남기기</h2>
+            <p class="text-xs text-slate-500">친구에게 따뜻한 마음과 추억의 한마디를 적어보세요</p>
+          </div>
+        </div>
+        <button onclick="closeModal('composeModal')" class="w-8 h-8 rounded-full bg-white hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 cursor-pointer">✕</button>
+      </div>
+
+      <form onsubmit="handleMessageSubmit(event)" class="p-5 overflow-y-auto flex-1 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">받는 친구 <span class="text-[#DE7272]">*</span></label>
+            <select id="msg-recipient" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 bg-white focus:ring-2 focus:ring-[#DE7272] outline-none"></select>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-bold text-slate-700">보내는 사람</label>
+              <button type="button" onclick="rollNickname()" class="text-[11px] text-[#DE7272] font-bold cursor-pointer hover:underline">🎲 별명 뽑기</button>
+            </div>
+            <input type="text" id="msg-author" placeholder="예: 짝꿍 민준이 (비워두면 익명)" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#DE7272] outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">메시지 내용 <span class="text-[#DE7272]">*</span></label>
+          <textarea id="msg-content" required rows="4" placeholder="친구에게 전하고 싶은 따뜻한 축하와 응원의 메시지를 적어보세요..." class="w-full p-3.5 rounded-2xl border border-slate-200 text-base focus:ring-2 focus:ring-[#DE7272] outline-none font-himelody" oninput="updateComposerPreview()"></textarea>
+        </div>
+
+        <!-- 글씨체 3종 선택 (Hi Melody, Gamja Flower, Poor Story) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">글씨체 선택</label>
+            <select id="msg-font" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white focus:ring-2 focus:ring-[#DE7272] outline-none" onchange="updateComposerPreview()">
+              <option value="himelody">하이멜로디 (Hi Melody)</option>
+              <option value="gamja">감자꽃 (Gamja Flower)</option>
+              <option value="poorstory">푸어스토리 (Poor Story)</option>
+            </select>
+          </div>
+
+          <!-- 메모지 색상 -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">메모지 색상</label>
+            <div class="flex items-center gap-2 pt-1">
+              <button type="button" onclick="selectColor('butter')" class="w-7 h-7 rounded-lg bg-[#FFF6A9] border-2 border-slate-700 cursor-pointer" title="버터 옐로우"></button>
+              <button type="button" onclick="selectColor('peach')" class="w-7 h-7 rounded-lg bg-[#FFCA88] border-2 border-transparent cursor-pointer" title="살구 피치"></button>
+              <button type="button" onclick="selectColor('coral')" class="w-7 h-7 rounded-lg bg-[#DE7272] border-2 border-transparent cursor-pointer" title="따스한 코랄"></button>
+              <button type="button" onclick="selectColor('mint')" class="w-7 h-7 rounded-lg bg-[#D1FAE5] border-2 border-transparent cursor-pointer" title="민트"></button>
+              <button type="button" onclick="selectColor('sky')" class="w-7 h-7 rounded-lg bg-[#E0F2FE] border-2 border-transparent cursor-pointer" title="스카이"></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 스티커 선택 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">스티커 선택</label>
+          <div class="flex items-center gap-2 p-1.5 bg-slate-50 rounded-xl overflow-x-auto text-xl" id="sticker-selector">
+            <button type="button" onclick="selectSticker('🎂')" class="p-1.5 rounded-lg bg-white shadow-xs">🎂</button>
+            <button type="button" onclick="selectSticker('🎉')" class="p-1.5 rounded-lg hover:bg-slate-200">🎉</button>
+            <button type="button" onclick="selectSticker('🎁')" class="p-1.5 rounded-lg hover:bg-slate-200">🎁</button>
+            <button type="button" onclick="selectSticker('🎈')" class="p-1.5 rounded-lg hover:bg-slate-200">🎈</button>
+            <button type="button" onclick="selectSticker('💖')" class="p-1.5 rounded-lg hover:bg-slate-200">💖</button>
+            <button type="button" onclick="selectSticker('🍀')" class="p-1.5 rounded-lg hover:bg-slate-200">🍀</button>
+            <button type="button" onclick="selectSticker('💐')" class="p-1.5 rounded-lg hover:bg-slate-200">💐</button>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#DE7272] to-[#FFCA88] hover:from-[#c95d5d] hover:to-[#f0b56e] text-white font-bold text-base shadow-md transition-all active:scale-98 cursor-pointer">
+          롤링페이퍼에 부착하기!
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. 디자인 설정 모달 -->
+  <div id="settingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[92vh]">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-[#DE7272]/15 via-[#FFCA88]/25 to-[#FFF6A9]/40">
+        <h2 class="text-lg font-title text-slate-800">🎨 롤링페이퍼 디자인 & 테마 설정</h2>
+        <button onclick="closeModal('settingsModal')" class="w-8 h-8 rounded-full bg-white hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 cursor-pointer">✕</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto flex-1 space-y-5">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-2">1. 행사 및 상황별 주제 테마</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <button onclick="applyTheme('birthday')" class="p-3 rounded-xl border border-[#DE7272] bg-[#FFFDE8] font-bold text-left cursor-pointer">🎂 생일 축하</button>
+            <button onclick="applyTheme('farewell')" class="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-left cursor-pointer">👋 전학 갈 때 (석별)</button>
+            <button onclick="applyTheme('welcome')" class="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-left cursor-pointer">🌸 전학 올 때 (환영)</button>
+            <button onclick="applyTheme('graduation')" class="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-left cursor-pointer">🎓 졸업 & 종업식</button>
+            <button onclick="applyTheme('cheering')" class="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-left cursor-pointer col-span-2">🍀 칭찬 & 우정 롤링</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-2">2. 배치 레이아웃</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <button onclick="applyLayout('sticky')" class="p-2.5 rounded-xl border border-[#DE7272] bg-[#FFFDE8] font-bold text-left cursor-pointer">📌 자유 포스트잇</button>
+            <button onclick="applyLayout('grid')" class="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-left cursor-pointer">🧱 카드 그리드</button>
+            <button onclick="applyLayout('polaroid')" class="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-left cursor-pointer">📸 감성 폴라로이드</button>
+            <button onclick="applyLayout('corkboard')" class="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-left cursor-pointer">🪵 코르크 메모판</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">학급명</label>
+            <input type="text" id="setting-class" value="3학년 2반" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">제목 문구</label>
+            <input type="text" id="setting-title" value="" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm">
+          </div>
+        </div>
+
+        <button onclick="saveSettings()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-[#DE7272] to-[#FFCA88] text-white font-bold text-sm shadow-md cursor-pointer">
+          디자인 적용하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 학생 추가 모달 -->
+  <div id="studentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-[#DE7272]/15 via-[#FFCA88]/25 to-[#FFF6A9]/40">
+        <h2 class="text-lg font-title text-slate-800">👥 새 학생 추가하기</h2>
+        <button onclick="closeModal('studentModal')" class="w-8 h-8 rounded-full bg-white hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 cursor-pointer">✕</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">학생 이름</label>
+          <input type="text" id="new-student-name" placeholder="예: 홍길동" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#DE7272] outline-none">
+        </div>
+        <p class="text-[11px] text-slate-500">
+          💡 구글 스프레드시트에 해당 학생 이름으로 <strong>새 탭(Sheet)</strong>이 자동 생성됩니다.
+        </p>
+        <button onclick="addNewStudent()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-[#DE7272] to-[#FFCA88] text-white font-bold text-sm shadow-md cursor-pointer">
+          학생 시트 추가하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 이미지 저장 모달 -->
+  <div id="exportModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-[#DE7272] via-[#FFCA88] to-[#FFF6A9] text-slate-900">
+        <h2 class="text-lg font-title">📸 롤링페이퍼 이미지 다운로드</h2>
+        <button onclick="closeModal('exportModal')" class="w-8 h-8 rounded-full bg-black/10 hover:bg-black/20 flex items-center justify-center text-slate-700 cursor-pointer">✕</button>
+      </div>
+      <div class="p-5 overflow-y-auto flex-1 space-y-4">
+        <div id="export-preview-box" class="border border-slate-200 rounded-2xl p-2 bg-slate-50 max-h-[360px] overflow-y-auto">
+          <img id="export-img-preview" src="" alt="미리보기" class="w-full h-auto rounded-xl shadow-xs">
+        </div>
+        <button id="download-png-btn" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#DE7272] to-[#FFCA88] text-white font-bold text-base shadow-md cursor-pointer">
+          PNG 파일 다운로드
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 자바스크립트 로직 (GAS google.script.run 및 로컬 브라우저 완벽 호환) -->
+  <script>
+    // 상태 변수
+    let students = [
+      { name: '김민준', messageCount: 2 },
+      { name: '이서연', messageCount: 1 },
+      { name: '박도현', messageCount: 1 }
+    ];
+    let currentStudent = '김민준';
+    let currentTheme = 'birthday';
+    let currentLayout = 'sticky';
+    let selectedNoteColor = 'butter';
+    let selectedSticker = '🎂';
+    let currentFont = 'himelody';
+    let schoolClass = '3학년 2반';
+
+    const COLOR_CLASSES = {
+      butter: { bg: 'bg-[#FFF6A9]', text: 'text-[#5c4a16]', border: 'border-[#f5ea8e]' },
+      peach: { bg: 'bg-[#FFCA88]', text: 'text-[#5a3407]', border: 'border-[#f0b56e]' },
+      coral: { bg: 'bg-[#DE7272]', text: 'text-white', border: 'border-[#c95d5d]' },
+      mint: { bg: 'bg-[#D1FAE5]', text: 'text-[#064E3B]', border: 'border-[#A7F3D0]' },
+      sky: { bg: 'bg-[#E0F2FE]', text: 'text-[#075985]', border: 'border-[#BAE6FD]' }
+    };
+
+    const FONT_CLASSES = {
+      himelody: 'font-himelody',
+      gamja: 'font-gamja',
+      poorstory: 'font-poorstory'
+    };
+
+    const THEME_DATA = {
+      birthday: {
+        badge: '생일 파티',
+        icon: '🎂',
+        title: (name) => `🎂 ${name}의 특별한 생일을 진심으로 축하해! 🎈`,
+        tagline: '세상에서 가장 특별한 너의 생일을 진심으로 축하해!'
+      },
+      farewell: {
+        badge: '석별의 정',
+        icon: '✈️',
+        title: (name) => `👋 ${name}야, 어디서든 반짝일 널 항상 기억할게! ✈️`,
+        tagline: '함께했던 소중한 시간 잊지 않을게, 새로운 곳에서도 반짝이길!'
+      },
+      welcome: {
+        badge: '환영해요',
+        icon: '🌸',
+        title: (name) => `🌸 우리 반에 온 ${name}을(를) 두 팔 벌려 환영해! 🌈`,
+        tagline: '우리 반에 온 걸 두 팔 벌려 환영해! 함께 즐거운 추억 만들자!'
+      },
+      graduation: {
+        badge: '졸업 & 종업',
+        icon: '🎓',
+        title: (name) => `🎓 빛나는 ${name}의 졸업을 축하하며, 꿈을 향해 날아올라! 🌟`,
+        tagline: '한 해 동안 함께 울고 웃었던 우리, 더 넓은 세상을 향해 날아오르자!'
+      },
+      cheering: {
+        badge: '칭찬 & 우정',
+        icon: '🍀',
+        title: (name) => `🍀 ${name}에게 전하는 사랑 가득 칭찬 & 우정 롤링페이퍼 💛`,
+        tagline: '평소에 전하지 못했던 칭찬과 고마운 마음을 아낌없이 보내요!'
+      }
+    };
+
+    // 로컬 메시지 저장소 (GAS 미연동 또는 오프라인 테스트용)
+    let localMessages = {
+      '김민준': [
+        { id: '1', author: '짝꿍 도현', content: '민준아 생일 진짜 축하해! 수업 끝나고 떡볶이 먹으러 가자 🎂', sticker: '🎂', color: 'butter', font: 'himelody', rotation: -2, createdAt: '2026-10-14' },
+        { id: '2', author: '서연', content: '민준아 생일 축하해! 항상 수학 문제 친절하게 알려줘서 고마워 🎉', sticker: '🎉', color: 'peach', font: 'gamja', rotation: 2, createdAt: '2026-10-14' }
+      ],
+      '이서연': [
+        { id: '3', author: '하은', content: '서연아 전학 가더라도 우리 톡 매일 하자 보고 싶을 거야 🥹', sticker: '💌', color: 'coral', font: 'poorstory', rotation: -1, createdAt: '2026-10-14' }
+      ],
+      '박도현': [
+        { id: '4', author: '민준', content: '도현아 우리 반에 전학 온 걸 환영해! 친하게 지내자 🌈', sticker: '🌸', color: 'mint', font: 'himelody', rotation: 1, createdAt: '2026-10-14' }
+      ]
+    };
+
+    // 초기화
+    window.onload = function() {
+      // 날짜 표시
+      const now = new Date();
+      document.getElementById('board-date').innerText = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일`;
+
+      loadStudents();
+    };
+
+    function isGasEnvironment() {
+      return typeof google !== 'undefined' && google.script && google.script.run;
+    }
+
+    function loadStudents() {
+      if (isGasEnvironment()) {
+        google.script.run
+          .withSuccessHandler(function(serverStudents) {
+            if (serverStudents && serverStudents.length > 0) {
+              students = serverStudents;
+              if (!students.some(s => s.name === currentStudent)) {
+                currentStudent = students[0].name;
+              }
+            }
+            renderStudentUI();
+            loadMessages();
+          })
+          .getStudents();
+      } else {
+        renderStudentUI();
+        loadMessages();
+      }
+    }
+
+    function renderStudentUI() {
+      const pillsContainer = document.getElementById('student-pills');
+      const recipientSelect = document.getElementById('msg-recipient');
+      
+      pillsContainer.innerHTML = '';
+      recipientSelect.innerHTML = '';
+
+      document.getElementById('student-count-label').innerText = `우리 반 학생들 (${students.length}명)`;
+
+      students.forEach(st => {
+        const isSelected = st.name === currentStudent;
+        
+        // 상단 알약 버튼
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.onclick = () => selectStudent(st.name);
+        btn.className = `flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+          isSelected 
+            ? 'bg-[#DE7272] text-white shadow-sm ring-2 ring-[#FFCA88]' 
+            : 'bg-[#FFFDE8] hover:bg-[#FFF6A9] text-slate-700 border border-[#FFCA88]/50'
+        }`;
+        btn.innerHTML = `<span>${st.name}</span><span class="px-1.5 py-0.2 rounded-full text-[10px] ${isSelected ? 'bg-white/30 text-white' : 'bg-[#FFCA88]/50 text-[#5a2e0a]'}">${st.messageCount || 0}</span>`;
+        pillsContainer.appendChild(btn);
+
+        // 글쓰기 창 select option
+        const opt = document.createElement('option');
+        opt.value = st.name;
+        opt.innerText = st.name;
+        if (st.name === currentStudent) opt.selected = true;
+        recipientSelect.appendChild(opt);
+      });
+
+      // 배너 텍스트 갱신
+      document.getElementById('board-student-name').innerText = currentStudent;
+      document.getElementById('floating-btn-text').innerText = `${currentStudent}에게 글 남기기 ✏️`;
+      updateBannerText();
+    }
+
+    function selectStudent(name) {
+      currentStudent = name;
+      renderStudentUI();
+      loadMessages();
+    }
+
+    function loadMessages() {
+      if (isGasEnvironment()) {
+        google.script.run
+          .withSuccessHandler(function(serverMsgs) {
+            renderMessages(serverMsgs || []);
+          })
+          .getMessages(currentStudent);
+      } else {
+        const msgs = localMessages[currentStudent] || [];
+        renderMessages(msgs);
+      }
+    }
+
+    function renderMessages(msgs) {
+      const container = document.getElementById('messages-container');
+      const emptyState = document.getElementById('empty-state');
+      document.getElementById('board-msg-count').innerText = `총 ${msgs.length}개의 따뜻한 메시지`;
+
+      // 학생 카운터 동기화
+      const stObj = students.find(s => s.name === currentStudent);
+      if (stObj) stObj.messageCount = msgs.length;
+
+      if (msgs.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      container.innerHTML = '';
+
+      msgs.forEach((m, idx) => {
+        const col = COLOR_CLASSES[m.color] || COLOR_CLASSES.butter;
+        const fontClass = FONT_CLASSES[m.font] || 'font-himelody';
+        const rot = m.rotation !== undefined ? m.rotation : ((idx % 5) - 2) * 1.5;
+
+        const card = document.createElement('div');
+        card.style.transform = `rotate(${rot}deg)`;
+        card.className = `relative p-5 rounded-2xl ${col.bg} ${col.border} border shadow-md hover:shadow-xl hover:scale-105 transition-all min-h-[170px] flex flex-col justify-between cursor-pointer`;
+
+        card.innerHTML = `
+          <div class="tape-top"></div>
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-2xl">${m.sticker || '💌'}</span>
+            <span class="text-[10px] opacity-60">${(m.createdAt || '').split(' ')[0]}</span>
+          </div>
+          <p class="text-base leading-relaxed ${col.text} ${fontClass} my-2 whitespace-pre-wrap">${m.content}</p>
+          <div class="pt-2 border-t border-black/5 flex justify-between items-center text-xs opacity-80">
+            <span class="font-bold">From. ${m.author || '익명'}</span>
+            <span class="text-[10px]">To. ${currentStudent}</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function updateBannerText() {
+      const th = THEME_DATA[currentTheme] || THEME_DATA.birthday;
+      document.getElementById('nav-icon').innerText = th.icon;
+      document.getElementById('board-avatar').innerText = th.icon;
+      document.getElementById('board-theme-badge').innerText = th.badge;
+      document.getElementById('board-tagline').innerText = th.tagline;
+      document.getElementById('board-title').innerText = th.title(currentStudent);
+      document.getElementById('board-class-tag').innerText = schoolClass;
+      document.getElementById('nav-class-badge').innerText = schoolClass;
+      document.getElementById('setting-title').value = th.title(currentStudent);
+      document.getElementById('footer-stamp').innerText = `✨ ${schoolClass} ${currentStudent}의 롤링페이퍼 · 소중한 추억`;
+    }
+
+    // 모달 제어
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    // 닉네임 랜덤 뽑기
+    function rollNickname() {
+      const adjs = ['친절한', '용감한', '달콤한', '행복한', '귀여운', '따뜻한', '반짝이는', '든든한'];
+      const nouns = ['짝꿍', '친구', '쿼카', '판다', '고양이', '토끼', '펭귄', '다람쥐', '딸기'];
+      const nickname = `${adjs[Math.floor(Math.random() * adjs.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`;
+      document.getElementById('msg-author').value = nickname;
+    }
+
+    function selectColor(c) {
+      selectedNoteColor = c;
+    }
+    function selectSticker(s) {
+      selectedSticker = s;
+    }
+
+    function updateComposerPreview() {
+      const font = document.getElementById('msg-font').value;
+      const textarea = document.getElementById('msg-content');
+      textarea.className = `w-full p-3.5 rounded-2xl border border-slate-200 text-base focus:ring-2 focus:ring-[#DE7272] outline-none ${FONT_CLASSES[font] || 'font-himelody'}`;
+    }
+
+    // 메시지 등록
+    function handleMessageSubmit(e) {
+      e.preventDefault();
+      const recipient = document.getElementById('msg-recipient').value;
+      const author = document.getElementById('msg-author').value || '익명의 친구';
+      const content = document.getElementById('msg-content').value;
+      const font = document.getElementById('msg-font').value;
+
+      if (!content.trim()) return;
+
+      const newMsg = {
+        studentName: recipient,
+        author: author,
+        content: content,
+        sticker: selectedSticker,
+        color: selectedNoteColor,
+        font: font
+      };
+
+      if (isGasEnvironment()) {
+        google.script.run
+          .withSuccessHandler(function() {
+            confetti({ particleCount: 70, spread: 60 });
+            closeModal('composeModal');
+            document.getElementById('msg-content').value = '';
+            loadMessages();
+          })
+          .addMessage(newMsg);
+      } else {
+        if (!localMessages[recipient]) localMessages[recipient] = [];
+        localMessages[recipient].unshift({
+          ...newMsg,
+          id: 'local_' + Date.now(),
+          createdAt: '방금 전',
+          rotation: Math.floor(Math.random() * 5) - 2
+        });
+        confetti({ particleCount: 70, spread: 60 });
+        closeModal('composeModal');
+        document.getElementById('msg-content').value = '';
+        if (recipient === currentStudent) loadMessages();
+      }
+    }
+
+    // 새 학생 추가
+    function addNewStudent() {
+      const name = document.getElementById('new-student-name').value.trim();
+      if (!name) return;
+
+      if (isGasEnvironment()) {
+        google.script.run
+          .withSuccessHandler(function() {
+            closeModal('studentModal');
+            document.getElementById('new-student-name').value = '';
+            currentStudent = name;
+            loadStudents();
+          })
+          .addStudent(name);
+      } else {
+        students.push({ name: name, messageCount: 0 });
+        localMessages[name] = [];
+        currentStudent = name;
+        closeModal('studentModal');
+        document.getElementById('new-student-name').value = '';
+        renderStudentUI();
+        loadMessages();
+      }
+    }
+
+    // 테마 및 레이아웃 설정
+    function applyTheme(th) {
+      currentTheme = th;
+      updateBannerText();
+    }
+    function applyLayout(layout) {
+      currentLayout = layout;
+    }
+    function saveSettings() {
+      schoolClass = document.getElementById('setting-class').value || '우리 반';
+      const customTitle = document.getElementById('setting-title').value;
+      if (customTitle) document.getElementById('board-title').innerText = customTitle;
+      updateBannerText();
+      closeModal('settingsModal');
+    }
+
+    // html2canvas 고화질 이미지 내보내기
+    function exportToImage() {
+      const target = document.getElementById('rolling-paper-capture-target');
+      
+      html2canvas(target, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null
+      }).then(canvas => {
+        const dataUrl = canvas.toDataURL('image/png');
+        document.getElementById('export-img-preview').src = dataUrl;
+        
+        document.getElementById('download-png-btn').onclick = function() {
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          a.download = `${schoolClass}_${currentStudent}_롤링페이퍼.png`;
+          a.click();
+        };
+
+        openModal('exportModal');
+      });
+    }
+  </script>
+</body>
+</html>
