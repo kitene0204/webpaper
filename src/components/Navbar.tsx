@@ -9,7 +9,8 @@ import {
   PenTool, 
   Layout, 
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  Share2
 } from 'lucide-react';
 import { Student, RollingTheme, RollingSettings } from '../types';
 
@@ -25,6 +26,7 @@ interface NavbarProps {
   onOpenStudentModal: () => void;
   onOpenGasModal: () => void;
   onOpenComposeModal: () => void;
+  onOpenShareModal: () => void;
   onExportImage: () => void;
   onToggleView: (view: 'board' | 'compose') => void;
 }
@@ -41,6 +43,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenStudentModal,
   onOpenGasModal,
   onOpenComposeModal,
+  onOpenShareModal,
   onExportImage,
   onToggleView,
 }) => {
@@ -102,8 +105,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Action buttons (Settings, GAS, Export Image) */}
+          {/* Action buttons (Settings, GAS, Export Image, Share Link) */}
           <div className="flex items-center gap-2">
+            {/* Share Link button */}
+            <button
+              type="button"
+              onClick={onOpenShareModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#FFCA88] bg-[#FFFDE8] hover:bg-[#FFF6A9] text-xs sm:text-sm font-semibold text-[#6d4411] cursor-pointer shadow-xs transition-all active:scale-95"
+              title="아이들에게 보낼 연동 공유 링크 복사"
+            >
+              <Share2 className="w-4 h-4 text-[#DE7272]" />
+              <span className="hidden sm:inline">링크 공유</span>
+            </button>
+
             {/* Design & Theme settings button */}
             <button
               type="button"

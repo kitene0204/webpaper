@@ -345,6 +345,50 @@ export class GasService {
   }
 
   /**
+   * Parse URL parameters on initial load (?to=이창민&gas=...)
+   */
+  public static initFromUrl(): { targetStudent?: string; isNewGasConnected?: boolean } {
+    if (typeof window === 'undefined') return {};
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const gasParam = params.get('gas');
+      let isNewGasConnected = false;
+
+      if (gasParam && gasParam.startsWith('http')) {
+        this.setGasUrl(gasParam);
+        isNewGasConnected = true;
+      }
+
+      const toParam = params.get('to') || params.get('student');
+      return {
+        targetStudent: toParam ? toParam.trim() : undefined,
+        isNewGasConnected,
+      };
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Generate student share link for students and teachers
+   */
+  public static getShareUrl(studentName?: string): string {
+    if (typeof window === 'undefined') return '';
+    const base = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams();
+
+    if (studentName) {
+      params.set('to', studentName);
+    }
+    if (this.gasUrl) {
+      params.set('gas', this.gasUrl);
+    }
+
+    const query = params.toString();
+    return query ? `${base}?${query}` : base;
+  }
+
+  /**
    * Get students list (either from GAS or localStorage)
    */
   public static async getStudents(): Promise<Student[]> {
@@ -358,11 +402,20 @@ export class GasService {
         if (response.ok) {
           const data = await response.json();
           if (data && data.success && Array.isArray(data.students)) {
+            // Filter out default empty sheets (Sheet1, 시트1) if there are student sheets
+            const validRemote = data.students.filter((remote: any) => {
+              const name = (remote.name || '').trim();
+              if ((name === 'Sheet1' || name === '시트1') && data.students.length > 1) {
+                return false;
+              }
+              return true;
+            });
+
             // merge with local metadata if exists
             const localStudents = this.getLocalStudents();
             const localMap = new Map(localStudents.map(s => [s.name, s]));
             
-            const merged: Student[] = data.students.map((remote: any) => {
+            const merged: Student[] = validRemote.map((remote: any) => {
               const local = localMap.get(remote.name);
               return {
                 id: remote.id || `student_${remote.name}`,
@@ -432,6 +485,39 @@ export class GasService {
     this.saveLocalStudents(students);
 
     return { success: true, student: newStudent };
+  }
+
+  /**
+   * Delete student from local storage
+   */
+  public static async deleteStudent(studentName: string): Promise<boolean> {
+    const students = this.getLocalStudents();
+    const filtered = students.filter(s => s.name !== studentName);
+    this.saveLocalStudents(filtered);
+
+    // Also remove local messages
+    const all = this.getAllLocalMessages();
+    delete all[studentName];
+    this.saveAllLocalMessages(all);
+    return true;
+  }
+
+  /**
+   * Clear all initial dummy sample students (김민준, 이서연, 박도현, 최유진, 정하은)
+   */
+  public static clearSampleStudents(): Student[] {
+    const dummyNames = new Set(INITIAL_STUDENTS.map(s => s.name));
+    const students = this.getLocalStudents().filter(s => !dummyNames.has(s.name));
+    this.saveLocalStudents(students);
+    return students;
+  }
+
+  /**
+   * Check if any dummy sample students are present
+   */
+  public static hasSampleStudents(): boolean {
+    const dummyNames = new Set(INITIAL_STUDENTS.map(s => s.name));
+    return this.getLocalStudents().some(s => dummyNames.has(s.name));
   }
 
   /**

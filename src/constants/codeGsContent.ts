@@ -190,7 +190,7 @@ function getStudentList() {
     const sheet = sheets[i];
     const sheetName = sheet.getName();
 
-    if (sheetName.startsWith('_') || sheetName === 'Sheet1' && sheets.length > 1) {
+    if (sheetName.startsWith('_') || ((sheetName === 'Sheet1' || sheetName === '시트1') && sheets.length > 1)) {
       continue;
     }
 
@@ -238,7 +238,7 @@ function ensureStudentSheet(studentName) {
     sheet.setColumnWidth(7, 90);
     sheet.setColumnWidth(8, 140);
 
-    const defaultSheet = ss.getSheetByName('Sheet1');
+    const defaultSheet = ss.getSheetByName('Sheet1') || ss.getSheetByName('시트1');
     if (defaultSheet && defaultSheet.getLastRow() === 0 && ss.getSheets().length > 1) {
       try {
         ss.deleteSheet(defaultSheet);

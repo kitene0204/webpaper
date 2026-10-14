@@ -6,6 +6,7 @@ import {
   RollingSettings 
 } from '../types';
 import { NOTE_COLORS, FONT_OPTIONS } from '../constants/themes';
+import { GasService } from '../services/gasService';
 import { 
   Sparkles, 
   Calendar, 
@@ -15,7 +16,9 @@ import {
   PenTool, 
   Heart,
   Share2,
-  Camera
+  Camera,
+  Check,
+  Copy
 } from 'lucide-react';
 
 interface RollingBoardProps {
@@ -38,6 +41,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
   onExportImage,
 }) => {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [copiedShare, setCopiedShare] = useState<boolean>(false);
 
   const studentName = currentStudent?.name || '우리 친구';
   const boardTitle = settings.boardTitle || currentTheme.defaultTitleTemplate(studentName);
@@ -159,6 +163,30 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                 <div className="text-xs text-[#FFF6A9] font-bold mt-0.5">
                   총 {messages.length}개의 따뜻한 메시지
                 </div>
+                {currentStudent && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const url = GasService.getShareUrl(currentStudent.name);
+                      try {
+                        await navigator.clipboard.writeText(url);
+                        setCopiedShare(true);
+                        setTimeout(() => setCopiedShare(false), 2000);
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                    className={`mt-2 flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 ${
+                      copiedShare
+                        ? 'bg-emerald-500 text-white border border-emerald-400'
+                        : 'bg-[#FFF6A9] hover:bg-white text-[#6d4411] border border-[#FFCA88]'
+                    }`}
+                    title={`${studentName}에게 쓰는 공유 링크를 복사하여 아이들에게 보내세요`}
+                  >
+                    {copiedShare ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedShare ? '공유 링크 복사됨!' : `'${studentName}' 링크 복사`}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

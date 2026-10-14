@@ -195,8 +195,8 @@ function getStudentList() {
     const sheet = sheets[i];
     const sheetName = sheet.getName();
 
-    // 내부 관리용 시트는 건너뜀
-    if (sheetName.startsWith('_') || sheetName === 'Sheet1' && sheets.length > 1) {
+    // 내부 관리용 시트 및 기본 시트(Sheet1, 시트1) 건너뜀
+    if (sheetName.startsWith('_') || ((sheetName === 'Sheet1' || sheetName === '시트1') && sheets.length > 1)) {
       continue;
     }
 
@@ -250,8 +250,8 @@ function ensureStudentSheet(studentName) {
     sheet.setColumnWidth(7, 90);  // 비밀글 여부
     sheet.setColumnWidth(8, 140); // 메시지 ID
 
-    // 기본 시트(Sheet1)가 비어있다면 정리
-    const defaultSheet = ss.getSheetByName('Sheet1');
+    // 기본 시트(Sheet1 또는 시트1)가 비어있다면 정리
+    const defaultSheet = ss.getSheetByName('Sheet1') || ss.getSheetByName('시트1');
     if (defaultSheet && defaultSheet.getLastRow() === 0 && ss.getSheets().length > 1) {
       try {
         ss.deleteSheet(defaultSheet);

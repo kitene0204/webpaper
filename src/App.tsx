@@ -7,6 +7,7 @@ import { ThemeSettingsModal } from './components/ThemeSettingsModal';
 import { MessageComposerModal } from './components/MessageComposerModal';
 import { GoogleAppsScriptModal } from './components/GoogleAppsScriptModal';
 import { ImageExportModal } from './components/ImageExportModal';
+import { ShareLinkModal } from './components/ShareLinkModal';
 
 import { Student, Message, RollingSettings, ThemeId } from './types';
 import { THEMES } from './constants/themes';
@@ -38,6 +39,7 @@ export default function App() {
   const [isGasModalOpen, setIsGasModalOpen] = useState(false);
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
   const [isImageExportOpen, setIsImageExportOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Active theme object
   const currentTheme = THEMES[settings.theme] || THEMES.birthday;
@@ -46,7 +48,32 @@ export default function App() {
   const loadStudents = useCallback(async () => {
     setLoading(true);
     try {
-      const studentList = await GasService.getStudents();
+      const { targetStudent, isNewGasConnected } = GasService.initFromUrl();
+      if (isNewGasConnected) {
+        setIsConnectedToGas(true);
+      }
+
+      let studentList = await GasService.getStudents();
+
+      // If a specific student was requested in URL (?to=이창민)
+      if (targetStudent) {
+        let found = studentList.find((s) => s.name === targetStudent);
+        if (!found) {
+          const res = await GasService.addStudent(targetStudent, '우리 반', 'birthday');
+          found = res.student;
+          studentList = await GasService.getStudents();
+        }
+        setStudents(studentList);
+        setCurrentStudent(found);
+        const themeId = found.customTheme || 'birthday';
+        setSettings((s) => ({
+          ...s,
+          theme: themeId,
+          boardTitle: THEMES[themeId].defaultTitleTemplate(found!.name),
+        }));
+        return;
+      }
+
       setStudents(studentList);
       if (studentList.length > 0) {
         // If currentStudent doesn't exist or isn't in list, select first
@@ -125,6 +152,33 @@ export default function App() {
     await loadStudents();
   };
 
+  // Delete student
+  const handleDeleteStudent = async (name: string) => {
+    await GasService.deleteStudent(name);
+    const updated = await GasService.getStudents();
+    setStudents(updated);
+    if (currentStudent?.name === name) {
+      if (updated.length > 0) {
+        handleSelectStudent(updated[0]);
+      } else {
+        setCurrentStudent(null);
+        setMessages([]);
+      }
+    }
+  };
+
+  // Clear sample dummy students
+  const handleClearSampleStudents = async () => {
+    const updated = GasService.clearSampleStudents();
+    setStudents(updated);
+    if (updated.length > 0) {
+      handleSelectStudent(updated[0]);
+    } else {
+      setCurrentStudent(null);
+      setMessages([]);
+    }
+  };
+
   // Add message
   const handleAddMessage = async (msgData: Omit<Message, 'id' | 'createdAt'>) => {
     const res = await GasService.addMessage(msgData);
@@ -183,6 +237,7 @@ export default function App() {
         onOpenStudentModal={() => setIsStudentModalOpen(true)}
         onOpenGasModal={() => setIsGasModalOpen(true)}
         onOpenComposeModal={() => setIsComposeModalOpen(true)}
+        onOpenShareModal={() => setIsShareModalOpen(true)}
         onExportImage={() => setIsImageExportOpen(true)}
         onToggleView={() => {}}
       />
@@ -255,6 +310,8 @@ export default function App() {
         onSelectStudent={handleSelectStudent}
         onAddStudent={handleAddStudent}
         onAddBulkStudents={handleAddBulkStudents}
+        onDeleteStudent={handleDeleteStudent}
+        onClearSampleStudents={handleClearSampleStudents}
         isConnectedToGas={isConnectedToGas}
       />
 
