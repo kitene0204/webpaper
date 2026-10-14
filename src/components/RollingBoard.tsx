@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Student, 
   Message, 
@@ -18,7 +18,11 @@ import {
   Share2,
   Camera,
   Check,
-  Copy
+  Copy,
+  Search,
+  RotateCcw,
+  User,
+  FileText
 } from 'lucide-react';
 
 interface RollingBoardProps {
@@ -42,6 +46,55 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
 }) => {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [copiedShare, setCopiedShare] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchFilterType, setSearchFilterType] = useState<'all' | 'author' | 'content'>('all');
+
+  // Filter messages based on search query and scope
+  const filteredMessages = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return messages;
+
+    return messages.filter((msg) => {
+      const authorMatch = (msg.author || '').toLowerCase().includes(q);
+      const contentMatch = (msg.content || '').toLowerCase().includes(q);
+      if (searchFilterType === 'author') return authorMatch;
+      if (searchFilterType === 'content') return contentMatch;
+      return authorMatch || contentMatch;
+    });
+  }, [messages, searchQuery, searchFilterType]);
+
+  // Extract unique authors for fast 1-click filter chips
+  const uniqueAuthors = useMemo(() => {
+    const set = new Set<string>();
+    messages.forEach((m) => {
+      const name = (m.author || '').trim();
+      if (name && name !== '익명' && name !== '익명의 친구') {
+        set.add(name);
+      }
+    });
+    return Array.from(set).slice(0, 10);
+  }, [messages]);
+
+  // Highlight keyword helper
+  const highlightMatch = (text: string, query: string) => {
+    if (!query.trim()) return text;
+    const escaped = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
+    const parts = text.split(regex);
+    return (
+      <>
+        {parts.map((part, i) =>
+          part.toLowerCase() === query.trim().toLowerCase() ? (
+            <mark key={i} className="bg-amber-300 text-slate-900 px-0.5 rounded-xs font-semibold">
+              {part}
+            </mark>
+          ) : (
+            part
+          )
+        )}
+      </>
+    );
+  };
 
   const studentName = currentStudent?.name || '우리 친구';
   const boardTitle = settings.boardTitle || currentTheme.defaultTitleTemplate(studentName);
@@ -204,10 +257,148 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
           </div>
         </div>
 
+        {/* Search & Filter Bar (data-html2canvas-ignore prevents it from appearing on exported images) */}
+        {messages.length > 0 && (
+          <div 
+            data-html2canvas-ignore="true" 
+            className="px-5 sm:px-8 md:px-10 pt-5 pb-1"
+          >
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl p-3.5 sm:p-4 shadow-sm border border-slate-200/90 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Search Input Box */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="작성자 이름 또는 메시지 내용 검색... (예: 민준, 축하, 고마워)"
+                    className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 text-sm focus:outline-hidden focus:ring-2 focus:ring-[#DE7272] focus:bg-white transition-all text-slate-800 placeholder-slate-400 font-pretendard"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200/60 transition-colors cursor-pointer"
+                      title="검색어 지우기"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter Scope Pills */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl self-start sm:self-auto shrink-0 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setSearchFilterType('all')}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      searchFilterType === 'all'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    전체 검색
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSearchFilterType('author')}
+                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                      searchFilterType === 'author'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <User className="w-3 h-3" />
+                    <span>작성자</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSearchFilterType('content')}
+                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                      searchFilterType === 'content'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <FileText className="w-3 h-3" />
+                    <span>내용</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status and Quick Author Filter Chips */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+                {/* Result count & reset */}
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 font-medium font-pretendard">
+                    {searchQuery.trim() ? (
+                      <>
+                        <span className="font-bold text-slate-800">'{searchQuery}'</span> 검색 결과:{' '}
+                        <span className="font-bold text-[#DE7272]">{filteredMessages.length}</span>개
+                        <span className="text-slate-400"> (전체 {messages.length}개 중)</span>
+                      </>
+                    ) : (
+                      <>
+                        총 <span className="font-bold text-slate-800">{messages.length}</span>개의 메시지가 있습니다
+                      </>
+                    )}
+                  </span>
+                  {searchQuery.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSearchFilterType('all');
+                      }}
+                      className="text-[11px] text-[#DE7272] hover:text-[#c45353] font-bold flex items-center gap-1 underline cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>전체 보기</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick author buttons */}
+                {uniqueAuthors.length > 0 && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                    <span className="text-slate-400 text-[11px] shrink-0 font-medium">작성자 바로찾기:</span>
+                    {uniqueAuthors.map((author) => {
+                      const isActive = searchQuery.trim() === author && searchFilterType === 'author';
+                      return (
+                        <button
+                          key={author}
+                          type="button"
+                          onClick={() => {
+                            if (isActive) {
+                              setSearchQuery('');
+                              setSearchFilterType('all');
+                            } else {
+                              setSearchQuery(author);
+                              setSearchFilterType('author');
+                            }
+                          }}
+                          className={`px-2.5 py-0.5 rounded-full text-[11px] transition-all cursor-pointer shrink-0 font-medium border ${
+                            isActive
+                              ? 'bg-slate-900 text-white font-bold border-slate-900 shadow-xs'
+                              : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
+                          }`}
+                        >
+                          {author}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Board Canvas Area with Messages */}
         <div className="p-6 sm:p-10 min-h-[500px]">
           {messages.length === 0 ? (
-            /* Empty state */
+            /* Total Empty state */
             <div className="py-20 text-center max-w-md mx-auto">
               <div className="w-20 h-20 mx-auto rounded-3xl bg-white/80 shadow-md flex items-center justify-center text-4xl mb-4">
                 💌
@@ -227,13 +418,37 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                 <span>첫 메시지 쓰러 가기</span>
               </button>
             </div>
+          ) : filteredMessages.length === 0 ? (
+            /* Search Empty state */
+            <div className="py-16 text-center max-w-md mx-auto bg-white/80 backdrop-blur-xs rounded-3xl p-8 border border-slate-200/80 shadow-xs">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl mb-3">
+                <Search className="w-7 h-7" />
+              </div>
+              <h4 className="text-base font-bold text-slate-800 font-jua mb-1">
+                '{searchQuery}'에 대한 메시지를 찾지 못했어요
+              </h4>
+              <p className="text-xs text-slate-500 mb-5 font-pretendard">
+                작성자 이름이나 메시지 안의 다른 키워드로 다시 검색해 보세요.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSearchFilterType('all');
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors cursor-pointer shadow-xs"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>전체 메시지 ({messages.length}개) 다시 보기</span>
+              </button>
+            </div>
           ) : (
-            /* Layout renderer */
+            /* Layout renderer with filteredMessages */
             <div>
               {/* Sticky Notes Layout */}
               {settings.layout === 'sticky' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-start">
-                  {messages.map((msg, index) => {
+                  {filteredMessages.map((msg, index) => {
                     const colorConf = NOTE_COLORS[msg.color] || NOTE_COLORS.yellow;
                     const fontCls =
                       FONT_OPTIONS.find((f) => f.id === msg.font)?.fontClass || 'font-himelody';
@@ -261,13 +476,13 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                         <p
                           className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 line-clamp-6 whitespace-pre-wrap break-keep`}
                         >
-                          {msg.content}
+                          {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
                         </p>
 
                         {/* Bottom Author Tag */}
                         <div className="pt-2 border-t border-black/5 flex items-center justify-between text-xs mt-auto">
                           <span className="font-bold text-slate-800 font-jua">
-                            From. {msg.author}
+                            From. {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}
                           </span>
                           <span className="text-[10px] text-slate-400">
                             {msg.createdAt.split(' ')[0]}
@@ -282,8 +497,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
               {/* Grid Layout */}
               {settings.layout === 'grid' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-                  {messages.map((msg) => {
-                    const colorConf = NOTE_COLORS[msg.color] || NOTE_COLORS.white;
+                  {filteredMessages.map((msg) => {
                     const fontCls =
                       FONT_OPTIONS.find((f) => f.id === msg.font)?.fontClass || 'font-himelody';
 
@@ -297,13 +511,13 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                           <div className="flex items-center gap-2">
                             <span className="text-2xl">{msg.sticker}</span>
                             <span className="font-bold text-sm text-slate-800 font-jua">
-                              {msg.author}
+                              {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}
                             </span>
                           </div>
                           <span className="text-[11px] text-slate-400">{msg.createdAt.split(' ')[0]}</span>
                         </div>
                         <p className={`text-base text-slate-700 leading-relaxed ${fontCls} my-2 whitespace-pre-wrap line-clamp-5 break-keep`}>
-                          {msg.content}
+                          {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
                         </p>
                         <div className="pt-2 text-right">
                           <span className="text-xs text-rose-500 font-bold hover:underline">
@@ -319,7 +533,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
               {/* Polaroid Layout */}
               {settings.layout === 'polaroid' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {messages.map((msg, index) => {
+                  {filteredMessages.map((msg, index) => {
                     const colorConf = NOTE_COLORS[msg.color] || NOTE_COLORS.yellow;
                     const fontCls =
                       FONT_OPTIONS.find((f) => f.id === msg.font)?.fontClass || 'font-himelody';
@@ -340,12 +554,12 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                           <p
                             className={`text-sm text-slate-800 ${fontCls} mt-4 line-clamp-4 leading-relaxed break-keep`}
                           >
-                            {msg.content}
+                            {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
                           </p>
                         </div>
                         {/* Polaroid handwritten caption */}
                         <div className="mt-3 px-1 text-center font-poorstory font-bold text-base text-slate-700">
-                          - {msg.author}의 마음 -
+                          - {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}의 마음 -
                         </div>
                       </div>
                     );
@@ -356,7 +570,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
               {/* Corkboard Layout */}
               {settings.layout === 'corkboard' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-7">
-                  {messages.map((msg, index) => {
+                  {filteredMessages.map((msg, index) => {
                     const colorConf = NOTE_COLORS[msg.color] || NOTE_COLORS.yellow;
                     const fontCls =
                       FONT_OPTIONS.find((f) => f.id === msg.font)?.fontClass || 'font-himelody';
@@ -382,7 +596,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                         </div>
 
                         <p className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 line-clamp-5 break-keep`}>
-                          {msg.content}
+                          {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
                         </p>
 
                         <div className="pt-2 border-t border-black/10 flex justify-between items-center text-xs">
@@ -390,7 +604,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                             To. {studentName}
                           </span>
                           <span className="font-bold text-slate-700 font-jua">
-                            From. {msg.author}
+                            From. {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}
                           </span>
                         </div>
                       </div>
