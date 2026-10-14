@@ -13,7 +13,7 @@ import {
   FileCode,
   RefreshCw
 } from 'lucide-react';
-import { GasService } from '../services/gasService';
+import { GasService, DEFAULT_GAS_URL } from '../services/gasService';
 import { CODE_GS_RAW } from '../constants/codeGsContent';
 
 interface GoogleAppsScriptModalProps {
@@ -41,6 +41,7 @@ export const GoogleAppsScriptModal: React.FC<GoogleAppsScriptModalProps> = ({
     message: '',
   });
   const [copied, setCopied] = useState(false);
+  const [savedNotice, setSavedNotice] = useState(false);
   const [activeTab, setActiveTab] = useState<'setup' | 'code' | 'sheetsInfo'>('setup');
 
   if (!isOpen) return null;
@@ -63,6 +64,11 @@ export const GoogleAppsScriptModal: React.FC<GoogleAppsScriptModalProps> = ({
     link.click();
   };
 
+  const handleRestoreDefault = () => {
+    setUrl(DEFAULT_GAS_URL);
+    setTestStatus({ tested: false, loading: false, success: false, message: '' });
+  };
+
   const handleTestConnection = async () => {
     setTestStatus({ tested: false, loading: true, success: false, message: '연결 중...' });
     const res = await GasService.testConnection(url);
@@ -77,8 +83,11 @@ export const GoogleAppsScriptModal: React.FC<GoogleAppsScriptModalProps> = ({
 
   const handleSaveUrl = () => {
     GasService.setGasUrl(url);
-    onConnectionUpdated();
-    onClose();
+    setSavedNotice(true);
+    setTimeout(() => {
+      onConnectionUpdated();
+      onClose();
+    }, 400);
   };
 
   const handleDisconnect = () => {
@@ -87,6 +96,8 @@ export const GoogleAppsScriptModal: React.FC<GoogleAppsScriptModalProps> = ({
     setTestStatus({ tested: false, loading: false, success: false, message: '' });
     onConnectionUpdated();
   };
+
+  const isDefaultUrl = url.trim() === DEFAULT_GAS_URL;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
@@ -104,8 +115,9 @@ export const GoogleAppsScriptModal: React.FC<GoogleAppsScriptModalProps> = ({
                   구글 앱스스크립트(GAS) & 시트 연동
                 </h2>
                 {GasService.isConnected() ? (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
-                    연결됨
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    연결 유지 중
                   </span>
                 ) : (
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">
@@ -169,29 +181,62 @@ export const GoogleAppsScriptModal: React.FC<GoogleAppsScriptModalProps> = ({
           {activeTab === 'setup' && (
             <div className="space-y-4">
               
+              {/* Permanent Maintenance Guarantee Banner */}
+              <div className="p-3.5 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-emerald-900">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-emerald-950 flex items-center gap-1.5">
+                    <span>구글 시트 연동 주소 영구 유지 보장</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-emerald-200 text-emerald-900 font-semibold">설정 유지됨</span>
+                  </p>
+                  <p className="text-emerald-800 leading-relaxed">
+                    선생님께서 등록해 두신 구글 앱스 스크립트 주소는 설정에서 직접 수정하거나 연동 해제를 누르기 전까지 <strong>모든 기기(아이들 스마트폰, 태블릿, PC) 및 새로고침 후에도 영구히 유지</strong>됩니다.
+                  </p>
+                </div>
+              </div>
+
               {/* URL Input Form */}
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-                <label className="block text-xs font-bold text-slate-700">
-                  배포된 Google Apps Script 웹 앱 URL (exec 주소)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700">
+                    배포된 Google Apps Script 웹 앱 URL (exec 주소)
+                  </label>
+                  {!isDefaultUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRestoreDefault}
+                      className="text-[11px] text-emerald-700 hover:text-emerald-800 font-bold underline cursor-pointer"
+                    >
+                      기본 연동 주소로 채우기
+                    </button>
+                  )}
+                </div>
+
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="url"
                     placeholder="https://script.google.com/macros/s/AKfycb.../exec"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-white"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-white"
                   />
                   <button
                     type="button"
                     onClick={handleTestConnection}
                     disabled={testStatus.loading || !url.trim()}
-                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 shrink-0"
+                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
                   >
                     <RefreshCw className={`w-4 h-4 ${testStatus.loading ? 'animate-spin' : ''}`} />
                     <span>연결 테스트</span>
                   </button>
                 </div>
+
+                {isDefaultUrl && (
+                  <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>선생님의 공식 구글 앱스 스크립트 배포 주소가 등록되어 있습니다.</span>
+                  </p>
+                )}
 
                 {/* Test status banner */}
                 {testStatus.tested && (
@@ -407,9 +452,10 @@ export const GoogleAppsScriptModal: React.FC<GoogleAppsScriptModalProps> = ({
             <button
               type="button"
               onClick={handleSaveUrl}
-              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all"
+              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5"
             >
-              연결 저장하기
+              {savedNotice ? <Check className="w-3.5 h-3.5" /> : null}
+              <span>{savedNotice ? '저장 완료!' : '연결 저장하기'}</span>
             </button>
           </div>
         </div>

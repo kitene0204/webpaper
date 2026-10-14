@@ -8,7 +8,8 @@ import {
   Smartphone, 
   Link as LinkIcon, 
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  CheckCircle2
 } from 'lucide-react';
 import { Student } from '../types';
 import { GasService } from '../services/gasService';
@@ -77,17 +78,16 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
         <div className="p-5 overflow-y-auto flex-1 space-y-4">
           
           {/* Explanation Alert */}
-          <div className="p-4 bg-[#FFFDE8] rounded-2xl border border-[#FFCA88] text-xs text-[#6d4411] space-y-1 leading-relaxed">
-            <div className="font-bold flex items-center gap-1.5 text-sm text-[#DE7272]">
-              <Sparkles className="w-4 h-4" />
-              <span>왜 아이들에게 김민준(더미데이터)이 떴을까요?</span>
+          <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200 text-xs text-emerald-900 space-y-1.5 leading-relaxed">
+            <div className="font-bold flex items-center gap-1.5 text-sm text-emerald-800">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>구글 시트 연동 주소가 영구 등록되었습니다!</span>
             </div>
-            <p>
-              구글 시트 연동 정보가 선생님 브라우저의 저장소(LocalStorage)에만 저장되어 있어,
-              아이들이 아무런 정보가 없는 기본 주소로 접속하면 로컬 체험 모드(김민준)가 뜨게 됩니다.
+            <p className="text-emerald-800">
+              선생님의 구글 시트 연동 주소가 고정 등록되어, 이제 아이들이 기본 주소나 공유 링크 중 어디로 접속해도 <strong>더미데이터(김민준) 대신 실제 구글 시트 데이터가 바로 열립니다.</strong>
             </p>
-            <p className="font-bold text-slate-800 pt-0.5">
-              👇 아래의 **[공유 링크]**를 복사해서 카카오톡이나 밴드, 클래스룸에 보내주시면 아이들의 폰에서도 자동으로 구글 시트와 연결됩니다!
+            <p className="font-bold text-emerald-950 pt-0.5">
+              👇 아래의 **[{studentName || '학생'} 바로가기 링크]**를 복사해서 공유하면, 아이들이 들어오자마자 해당 학생의 칠판이 바로 열려 가장 편리합니다!
             </p>
           </div>
 

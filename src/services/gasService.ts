@@ -268,23 +268,56 @@ const INITIAL_MESSAGES: Record<string, Message[]> = {
   ]
 };
 
+export const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwQHvgwDg4D-o5c0n3n-Pyx4pW7ZpNLRIJlpjGUY0yZ2FQimYIw71m9Wx9bhhiMDEnk/exec';
+
 export class GasService {
-  private static gasUrl: string = 
-    localStorage.getItem(STORAGE_KEY_GAS_URL) || 
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GAS_URL) || 
-    '';
+  private static gasUrl: string = (() => {
+    if (typeof window === 'undefined') return DEFAULT_GAS_URL;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_GAS_URL);
+      if (stored !== null) {
+        return (stored === 'none' || stored === 'disabled') ? '' : stored;
+      }
+      const envUrl = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GAS_URL);
+      if (envUrl) {
+        localStorage.setItem(STORAGE_KEY_GAS_URL, envUrl);
+        return envUrl;
+      }
+      // Auto-persist default GAS URL so it remains connected across sessions
+      localStorage.setItem(STORAGE_KEY_GAS_URL, DEFAULT_GAS_URL);
+      return DEFAULT_GAS_URL;
+    } catch {
+      return DEFAULT_GAS_URL;
+    }
+  })();
 
   public static getGasUrl(): string {
     return this.gasUrl;
   }
 
   public static setGasUrl(url: string) {
-    this.gasUrl = (url || '').trim();
-    if (this.gasUrl) {
-      localStorage.setItem(STORAGE_KEY_GAS_URL, this.gasUrl);
-    } else {
-      localStorage.removeItem(STORAGE_KEY_GAS_URL);
+    const trimmed = (url || '').trim();
+    this.gasUrl = trimmed;
+    if (typeof window !== 'undefined') {
+      try {
+        if (trimmed) {
+          localStorage.setItem(STORAGE_KEY_GAS_URL, trimmed);
+        } else {
+          // Explicitly disabled by user in settings
+          localStorage.setItem(STORAGE_KEY_GAS_URL, 'none');
+        }
+      } catch (err) {
+        console.warn('localStorage error', err);
+      }
     }
+  }
+
+  public static resetToDefaultGasUrl() {
+    this.setGasUrl(DEFAULT_GAS_URL);
+  }
+
+  public static isDefaultGasUrl(): boolean {
+    return this.gasUrl === DEFAULT_GAS_URL;
   }
 
   public static isConnected(): boolean {
@@ -300,6 +333,24 @@ export class GasService {
       return { success: false, message: 'Google Apps Script URL을 입력해주세요.' };
     }
 
+    // Try GET first (Google Apps Script handles GET redirects cleanest across all browsers)
+    try {
+      const getUrl = `${targetUrl}${targetUrl.includes('?') ? '&' : '?'}action=getStudents&t=${Date.now()}`;
+      const response = await fetch(getUrl);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.success) {
+          return {
+            success: true,
+            message: '구글 스프레드시트와 성공적으로 연결되었습니다!',
+            sheetName: '우리반 롤링페이퍼',
+          };
+        }
+      }
+    } catch {
+      // Fall through to POST
+    }
+
     try {
       const response = await fetch(targetUrl, {
         method: 'POST',
@@ -309,39 +360,24 @@ export class GasService {
         body: JSON.stringify({ action: 'ping' }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP 상태 코드: ${response.status}`);
-      }
-
-      const data = await response.json();
-      if (data && data.success) {
-        return {
-          success: true,
-          message: data.message || '연결 성공!',
-          sheetName: data.spreadsheetName || '연동 스프레드시트',
-        };
-      }
-      return { success: false, message: data.error || '응답 오류' };
-    } catch (err: any) {
-      // In case browser encounters CORS redirect issue with POST, attempt GET query as fallback
-      try {
-        const getUrl = `${targetUrl}${targetUrl.includes('?') ? '&' : '?'}action=getStudents`;
-        const getRes = await fetch(getUrl);
-        if (getRes.ok) {
-          const getData = await getRes.json();
-          if (getData && getData.success) {
-            return { success: true, message: '연결 성공 (GET 확인됨)', sheetName: '구글 스프레드시트' };
-          }
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.success) {
+          return {
+            success: true,
+            message: data.message || '연결 성공!',
+            sheetName: data.spreadsheetName || '구글 스프레드시트',
+          };
         }
-      } catch (getErr) {
-        // Fallback also failed
       }
-
-      return {
-        success: false,
-        message: `연결 실패: ${err.message || '네트워크 오류 (배포 권한이 [모든 사용자]인지 확인하세요)'}`,
-      };
+    } catch (err: any) {
+      // 
     }
+
+    return {
+      success: false,
+      message: '연결 실패: 네트워크 오류 또는 웹 앱 배포 권한([모든 사용자])을 확인해주세요.',
+    };
   }
 
   /**
@@ -394,24 +430,44 @@ export class GasService {
   public static async getStudents(): Promise<Student[]> {
     if (this.isConnected()) {
       try {
-        const response = await fetch(this.gasUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'getStudents' }),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.success && Array.isArray(data.students)) {
-            // Filter out default empty sheets (Sheet1, 시트1) if there are student sheets
-            const validRemote = data.students.filter((remote: any) => {
-              const name = (remote.name || '').trim();
-              if ((name === 'Sheet1' || name === '시트1') && data.students.length > 1) {
-                return false;
-              }
-              return true;
-            });
+        let data: any = null;
 
-            // merge with local metadata if exists
+        // 1. Try GET first (Google Apps Script handles GET redirects cleanest across all browsers)
+        try {
+          const getUrl = `${this.gasUrl}${this.gasUrl.includes('?') ? '&' : '?'}action=getStudents&t=${Date.now()}`;
+          const getRes = await fetch(getUrl);
+          if (getRes.ok) {
+            data = await getRes.json();
+          }
+        } catch {
+          // If GET fails, try POST
+          try {
+            const response = await fetch(this.gasUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ action: 'getStudents' }),
+            });
+            if (response.ok) {
+              data = await response.json();
+            }
+          } catch (postErr) {
+            console.warn('GAS fetch failed', postErr);
+          }
+        }
+
+        if (data && data.success && Array.isArray(data.students)) {
+          // Filter out default empty sheets (Sheet1, 시트1, _ROLLING_CONFIG_) if there are student sheets
+          const validRemote = data.students.filter((remote: any) => {
+            const name = (remote.name || '').trim();
+            if ((name === 'Sheet1' || name === '시트1' || name === '_ROLLING_CONFIG_') && data.students.length > 1) {
+              return false;
+            }
+            if (name === '_ROLLING_CONFIG_') return false;
+            return true;
+          });
+
+          if (validRemote.length > 0) {
+            // Merge with local metadata if exists
             const localStudents = this.getLocalStudents();
             const localMap = new Map(localStudents.map(s => [s.name, s]));
             
@@ -422,12 +478,12 @@ export class GasService {
                 name: remote.name,
                 messageCount: remote.messageCount || 0,
                 gradeClass: local?.gradeClass || '우리 반',
-                customTheme: local?.customTheme,
+                customTheme: local?.customTheme || 'birthday',
                 lastUpdated: remote.lastUpdated || new Date().toISOString(),
               };
             });
 
-            // Save snapshot locally
+            // Save snapshot locally (this cleans dummy sample data)
             this.saveLocalStudents(merged);
             return merged;
           }
@@ -526,22 +582,39 @@ export class GasService {
   public static async getMessages(studentName: string): Promise<Message[]> {
     if (this.isConnected()) {
       try {
-        const response = await fetch(this.gasUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'getMessages', studentName }),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.success && Array.isArray(data.messages)) {
-            // Add slight random rotation for notes if not provided
-            const formatted = data.messages.map((m: any, idx: number) => ({
-              ...m,
-              rotation: ((idx % 5) - 2) * 1.5,
-            }));
-            this.saveLocalMessagesForStudent(studentName, formatted);
-            return formatted;
+        let data: any = null;
+
+        // 1. Try GET first (Google Apps Script handles GET cleanly without CORS issues)
+        try {
+          const getUrl = `${this.gasUrl}${this.gasUrl.includes('?') ? '&' : '?'}action=getMessages&student=${encodeURIComponent(studentName)}&t=${Date.now()}`;
+          const getRes = await fetch(getUrl);
+          if (getRes.ok) {
+            data = await getRes.json();
           }
+        } catch {
+          // Fallback to POST
+          try {
+            const response = await fetch(this.gasUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ action: 'getMessages', studentName }),
+            });
+            if (response.ok) {
+              data = await response.json();
+            }
+          } catch (postErr) {
+            console.warn('GAS POST getMessages failed', postErr);
+          }
+        }
+
+        if (data && data.success && Array.isArray(data.messages)) {
+          // Add slight random rotation for notes if not provided
+          const formatted = data.messages.map((m: any, idx: number) => ({
+            ...m,
+            rotation: ((idx % 5) - 2) * 1.5,
+          }));
+          this.saveLocalMessagesForStudent(studentName, formatted);
+          return formatted;
         }
       } catch (err) {
         console.warn('GAS getMessages error, falling back to local', err);
