@@ -75,54 +75,38 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
   const activeTitleColor = formSettings.titleColor || currentThemeObj.primaryColor;
 
   const handleRecipientNameChange = (newName: string) => {
-    const oldName = recipientName;
     setRecipientName(newName);
     
-    // Auto-detect if name ends with '선생님' or '님'
+    // Auto-detect honorific mode if name ends with '선생님' or '님'
     let currentHon = isHonorific;
     if (isHonorificTarget(newName) && !isHonorific) {
       currentHon = true;
       setIsHonorific(true);
     }
 
-    setFormSettings(prev => {
-      let updatedTitle = prev.boardTitle;
-      // If previous name was in the title, replace it with the new name
-      if (oldName && updatedTitle.includes(oldName)) {
-        updatedTitle = updatedTitle.split(oldName).join(newName || '친구');
-      } else if (!updatedTitle || updatedTitle === currentThemeObj.defaultTitleTemplate(oldName || '친구', currentHon)) {
-        updatedTitle = currentThemeObj.defaultTitleTemplate(newName || '친구', currentHon);
-      }
-      return {
-        ...prev,
-        honorificMode: currentHon,
-        targetStudentName: newName,
-        boardTitle: updatedTitle,
-      };
-    });
+    setFormSettings(prev => ({
+      ...prev,
+      honorificMode: currentHon,
+      targetStudentName: newName,
+    }));
   };
 
   const handleHonorificChange = (newHon: boolean) => {
     setIsHonorific(newHon);
-    const studentName = recipientName.trim() || currentStudent?.name || (newHon ? '선생님' : '친구');
-    const autoTitle = currentThemeObj.defaultTitleTemplate(studentName, newHon);
     setFormSettings(prev => ({
       ...prev,
       honorificMode: newHon,
-      boardTitle: autoTitle,
     }));
   };
 
   const handleThemeChange = (newTheme: ThemeId) => {
-    const studentName = recipientName.trim() || currentStudent?.name || (isHonorific ? '선생님' : '친구');
-    const autoTitle = THEMES[newTheme]?.defaultTitleTemplate(studentName, isHonorific) || '';
     const themeColor = THEMES[newTheme]?.primaryColor || '#DE7272';
-    // Automatically match the title color to the new theme!
+    // Match the theme color to the new theme while keeping user's custom title intact
     setFormSettings(prev => ({
       ...prev,
       theme: newTheme,
-      boardTitle: autoTitle,
       titleColor: themeColor,
+      boardTitle: prev.boardTitle || THEMES[newTheme]?.defaultTitleTemplate(recipientName || currentStudent?.name || (isHonorific ? '선생님' : '친구'), isHonorific),
     }));
   };
 
@@ -137,22 +121,8 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
   };
 
   const handleTitleChange = (newTitle: string) => {
+    // Directly update boardTitle without tampering with recipient name!
     setFormSettings(prev => ({ ...prev, boardTitle: newTitle }));
-    // If the user modified the title directly and replaced the student name, e.g. "000의 특별한 생일"
-    const match = newTitle.match(/(?:🎂|💌|🌈|🎓|🔥|\s|^)([\w가-힣0-9]{2,12})(?:의\s*(?:특별한|빛나는|소중한|생일|생신|졸업|전학)|(?:아|야)[,!~.\s]|에게|께)/);
-    if (match && match[1]) {
-      const extracted = match[1].trim();
-      if (extracted && extracted !== recipientName) {
-        setRecipientName(extracted);
-        const autoHon = isHonorificTarget(extracted);
-        if (autoHon) setIsHonorific(true);
-        setFormSettings(prev => ({ 
-          ...prev, 
-          targetStudentName: extracted,
-          honorificMode: autoHon ? true : prev.honorificMode,
-        }));
-      }
-    }
   };
 
   const handleResetThemeColor = () => {
@@ -422,10 +392,15 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Recipient Target Input (주인공) */}
               <div className="sm:col-span-1">
-                <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-amber-500" />
-                  <span>주인공 (받는 대상)</span>
-                  <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <User className="w-3.5 h-3.5 text-amber-500" />
+                    <span>주인공 (받는 대상)</span>
+                    <span className="text-rose-500">*</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded-md">
+                    직접 입력
+                  </span>
                 </label>
                 <input
                   type="text"
@@ -435,14 +410,15 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
                   className="w-full px-3.5 py-2.5 rounded-xl border-2 border-amber-300 bg-amber-50/40 text-sm font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-400 focus:bg-white transition-all shadow-xs"
                 />
                 <span className="text-[10px] text-amber-700/80 mt-1 block font-medium">
-                  우측 '주인공' 카드와 링크에 즉시 반영됩니다
+                  우측 '주인공' 카드와 전용 링크에 즉시 반영됩니다
                 </span>
               </div>
 
               {/* Class Name */}
               <div className="sm:col-span-1">
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  학급 / 단체명
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>학급 / 단체명</span>
+                  <span className="text-[10px] text-slate-400">직접 입력</span>
                 </label>
                 <input
                   type="text"
@@ -456,30 +432,53 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
                 </span>
               </div>
 
-              {/* Recommendation Title Generator */}
+              {/* Optional Recommendation Title Generator Button */}
               <div className="sm:col-span-1 flex flex-col justify-end">
                 <button
                   type="button"
                   onClick={handleResetTitle}
                   className="w-full py-2.5 px-3 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100/80 text-rose-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  title="현재 입력한 주인공 이름을 바탕으로 추천 문구를 생성합니다"
+                  title="현재 입력한 주인공 이름을 바탕으로 추천 문구를 생성하여 입력창에 채웁니다"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  <span>'{recipientName || (isHonorific ? '선생님' : '주인공')}' 문구 자동 완성</span>
+                  <span>추천 문구 자동 채우기</span>
                 </button>
-                <span className="text-[10px] text-rose-600/80 mt-1 text-center block">
-                  {isHonorific ? '존댓말 추천 문구 채우기' : '친근한 추천 문구 채우기'}
+                <span className="text-[10px] text-slate-400 mt-1 text-center block">
+                  직접 쓰시거나 필요 시 추천으로 채우기
                 </span>
               </div>
 
-              {/* Clickable Quick Recommended Titles */}
+              {/* Board Title Input (Direct typing) */}
               <div className="sm:col-span-3">
+                <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    <span>롤링페이퍼 상단 타이틀 문구 (직접 작성)</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-rose-700 bg-rose-100/70 px-1.5 py-0.2 rounded-md">
+                    원하는 문구로 자유롭게 직접 입력
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={formSettings.boardTitle}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  placeholder="예: 👋 함수현 선생님, 그동안 감사했습니다!! ✈️"
+                  className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-300 bg-white text-sm font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-rose-400 focus:border-rose-400 font-title shadow-xs"
+                />
+                <span className="text-[11px] text-slate-500 mt-1 block">
+                  원하는 축하·응원·감사 문구를 직접 자유롭게 작성하시면 상단 메인 배너에 그대로 반영됩니다.
+                </span>
+              </div>
+
+              {/* Clickable Quick Recommended Titles (Optional quick selection) */}
+              <div className="sm:col-span-3 pt-1">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[11px] font-bold text-slate-600">
-                    💡 원클릭 추천 타이틀 (클릭 시 입력창에 바로 적용됩니다):
+                    💡 빠른 추천 타이틀 (원클릭 시 위 타이틀 입력창에 적용):
                   </span>
                   <span className="text-[10px] text-slate-400">
-                    {isHonorific ? '존댓말 프리셋' : '친구 프리셋'}
+                    {isHonorific ? '존댓말 예시' : '친구 예시'}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -498,20 +497,6 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Board Title Input */}
-              <div className="sm:col-span-3">
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  롤링페이퍼 상단 타이틀 문구
-                </label>
-                <input
-                  type="text"
-                  value={formSettings.boardTitle}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  placeholder="롤링페이퍼 상단에 크게 들어갈 제목 문구"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-hidden focus:ring-2 focus:ring-rose-400 font-title"
-                />
               </div>
             </div>
 
