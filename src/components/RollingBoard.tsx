@@ -202,7 +202,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
     );
   };
 
-  const studentName = currentStudent?.name || '우리 친구';
+  const studentName = settings.targetStudentName || currentStudent?.name || '우리 친구';
   const boardTitle = settings.boardTitle || currentTheme.defaultTitleTemplate(studentName);
   const currentDate = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric',
@@ -334,11 +334,12 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                 <div className={`text-xs font-bold mt-0.5 ${cardCounterClass}`}>
                   총 {messages.length}개의 따뜻한 메시지
                 </div>
-                {currentStudent && (
+                {(currentStudent || settings.targetStudentName) && (
                   <button
                     type="button"
                     onClick={async () => {
-                      const url = GasService.getShareUrl(currentStudent.name);
+                      const shareTargetName = settings.targetStudentName || currentStudent?.name || studentName;
+                      const url = GasService.getShareUrl(shareTargetName);
                       try {
                         await navigator.clipboard.writeText(url);
                         setCopiedShare(true);

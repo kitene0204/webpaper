@@ -544,6 +544,66 @@ export class GasService {
   }
 
   /**
+   * Rename or update student name, migrating messages and local cache
+   */
+  public static async renameStudent(oldName: string, newName: string): Promise<Student> {
+    const trimmedNew = newName.trim();
+    if (!trimmedNew) throw new Error('새 이름을 입력해주세요.');
+    if (trimmedNew === oldName) {
+      const current = this.getLocalStudents().find(s => s.name === oldName);
+      if (current) return current;
+    }
+
+    if (this.isConnected()) {
+      try {
+        await fetch(this.gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'addStudent', studentName: trimmedNew }),
+        });
+      } catch (err) {
+        console.warn('GAS rename/addStudent error:', err);
+      }
+    }
+
+    const students = this.getLocalStudents();
+    const existingIndex = students.findIndex(s => s.name === oldName);
+    let updatedStudent: Student;
+
+    if (existingIndex >= 0) {
+      updatedStudent = {
+        ...students[existingIndex],
+        name: trimmedNew,
+        lastUpdated: new Date().toISOString(),
+      };
+      students[existingIndex] = updatedStudent;
+    } else {
+      updatedStudent = {
+        id: `student_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        name: trimmedNew,
+        gradeClass: '우리 반',
+        messageCount: 0,
+        customTheme: 'birthday',
+        lastUpdated: new Date().toISOString(),
+      };
+      students.push(updatedStudent);
+    }
+    this.saveLocalStudents(students);
+
+    // Migrate messages if any
+    const allMessages = this.getAllLocalMessages();
+    if (allMessages[oldName]) {
+      const movedMessages = allMessages[oldName].map(m => ({ ...m, studentName: trimmedNew }));
+      allMessages[trimmedNew] = (allMessages[trimmedNew] || []).concat(movedMessages);
+      delete allMessages[oldName];
+      this.saveAllLocalMessages(allMessages);
+      updatedStudent.messageCount = allMessages[trimmedNew].length;
+    }
+
+    return updatedStudent;
+  }
+
+  /**
    * Delete student from local storage
    */
   public static async deleteStudent(studentName: string): Promise<boolean> {

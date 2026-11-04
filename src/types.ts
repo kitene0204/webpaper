@@ -64,6 +64,7 @@ export interface RollingSettings {
   bgTexture: 'dots' | 'grid' | 'plain' | 'cork';
   customBannerMessage?: string;
   titleColor?: string; // Hex color for top title banner & theme sync
+  targetStudentName?: string; // Recipient / hero student name (e.g. 주인공)
 }
 
 export interface PlacedSticker {

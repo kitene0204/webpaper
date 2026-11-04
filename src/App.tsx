@@ -69,6 +69,7 @@ export default function App() {
         const themeId = found.customTheme || 'birthday';
         setSettings((s) => ({
           ...s,
+          targetStudentName: found!.name,
           theme: themeId,
           boardTitle: THEMES[themeId].defaultTitleTemplate(found!.name),
           titleColor: THEMES[themeId].primaryColor,
@@ -88,6 +89,7 @@ export default function App() {
           const themeId = initial.customTheme || 'birthday';
           setSettings((s) => ({
             ...s,
+            targetStudentName: initial.name,
             theme: themeId,
             boardTitle: THEMES[themeId].defaultTitleTemplate(initial.name),
             titleColor: THEMES[themeId].primaryColor,
@@ -126,6 +128,7 @@ export default function App() {
     const themeToApply = student.customTheme || settings.theme;
     setSettings((prev) => ({
       ...prev,
+      targetStudentName: student.name,
       theme: themeToApply,
       boardTitle: THEMES[themeToApply].defaultTitleTemplate(student.name),
       titleColor: THEMES[themeToApply].primaryColor,
@@ -141,6 +144,7 @@ export default function App() {
       const appliedTheme = theme || 'birthday';
       setSettings((prev) => ({
         ...prev,
+        targetStudentName: res.student.name,
         theme: appliedTheme,
         schoolClass: gradeClass,
         boardTitle: THEMES[appliedTheme].defaultTitleTemplate(res.student.name),
@@ -219,6 +223,47 @@ export default function App() {
           : s
       )
     );
+  };
+
+  // Handle saving design/theme settings with instant sync to recipient student
+  const handleSaveThemeSettings = async (newSettings: RollingSettings, newRecipientName?: string) => {
+    const targetName = (newRecipientName || newSettings.targetStudentName || '').trim();
+    
+    setSettings({
+      ...newSettings,
+      targetStudentName: targetName || newSettings.targetStudentName,
+    });
+
+    if (targetName) {
+      // 1. If recipient matches current student, nothing to migrate
+      if (currentStudent && currentStudent.name === targetName) {
+        return;
+      }
+
+      // 2. If student with targetName already exists in student list, select them
+      const existing = students.find((s) => s.name === targetName);
+      if (existing) {
+        setCurrentStudent(existing);
+        loadMessages(existing);
+        return;
+      }
+
+      // 3. If new recipient name, rename/migrate active student or create student
+      if (currentStudent) {
+        const oldName = currentStudent.name;
+        const updated = await GasService.renameStudent(oldName, targetName);
+        setStudents((prev) =>
+          prev.map((s) => (s.name === oldName ? { ...updated, name: targetName } : s))
+        );
+        setCurrentStudent(updated);
+        loadMessages(updated);
+      } else {
+        const res = await GasService.addStudent(targetName, newSettings.schoolClass || '우리 반', newSettings.theme);
+        setStudents((prev) => [...prev, res.student]);
+        setCurrentStudent(res.student);
+        loadMessages(res.student);
+      }
+    }
   };
 
   // Connection updated handler
@@ -326,7 +371,7 @@ export default function App() {
         onClose={() => setIsThemeModalOpen(false)}
         settings={settings}
         currentStudent={currentStudent}
-        onSaveSettings={(newSettings) => setSettings(newSettings)}
+        onSaveSettings={handleSaveThemeSettings}
       />
 
       <MessageComposerModal

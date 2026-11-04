@@ -32,7 +32,7 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const studentName = currentStudent?.name || '친구';
+  const studentName = settings.targetStudentName || currentStudent?.name || '친구';
   const defaultFilename = `${settings.schoolClass || '우리반'}_${studentName}_롤링페이퍼.png`;
   const [filename, setFilename] = useState(defaultFilename);
 
@@ -44,7 +44,7 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({
       setDataUrl(null);
       setError(null);
     }
-  }, [isOpen, currentStudent]);
+  }, [isOpen, currentStudent, settings.targetStudentName]);
 
   const generateImage = async () => {
     setLoading(true);
