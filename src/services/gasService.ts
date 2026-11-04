@@ -1,8 +1,9 @@
-import { Student, Message } from '../types';
+import { Student, Message, RollingSettings } from '../types';
 
 const STORAGE_KEY_GAS_URL = 'rolling_gas_app_url';
 const STORAGE_KEY_STUDENTS = 'rolling_local_students_v2';
 const STORAGE_KEY_MESSAGES = 'rolling_local_messages_v2';
+const STORAGE_KEY_SETTINGS = 'rolling_board_settings_v2';
 
 // Initial sample data for instant exploration
 const INITIAL_STUDENTS: Student[] = [
@@ -546,13 +547,9 @@ export class GasService {
   /**
    * Rename or update student name, migrating messages and local cache
    */
-  public static async renameStudent(oldName: string, newName: string): Promise<Student> {
+  public static async renameStudent(oldName: string, newName: string, newGradeClass?: string, newTheme?: any): Promise<Student> {
     const trimmedNew = newName.trim();
     if (!trimmedNew) throw new Error('새 이름을 입력해주세요.');
-    if (trimmedNew === oldName) {
-      const current = this.getLocalStudents().find(s => s.name === oldName);
-      if (current) return current;
-    }
 
     if (this.isConnected()) {
       try {
@@ -574,6 +571,8 @@ export class GasService {
       updatedStudent = {
         ...students[existingIndex],
         name: trimmedNew,
+        gradeClass: newGradeClass || students[existingIndex].gradeClass,
+        customTheme: newTheme || students[existingIndex].customTheme,
         lastUpdated: new Date().toISOString(),
       };
       students[existingIndex] = updatedStudent;
@@ -581,9 +580,9 @@ export class GasService {
       updatedStudent = {
         id: `student_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         name: trimmedNew,
-        gradeClass: '우리 반',
+        gradeClass: newGradeClass || '우리 반',
         messageCount: 0,
-        customTheme: 'birthday',
+        customTheme: newTheme || 'birthday',
         lastUpdated: new Date().toISOString(),
       };
       students.push(updatedStudent);
@@ -779,13 +778,46 @@ export class GasService {
     return true;
   }
 
+  // --- Settings Persistence & Sync ---
+  public static getLocalSettings(): Partial<RollingSettings> | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  public static saveLocalSettings(settings: Partial<RollingSettings>) {
+    if (typeof window === 'undefined') return;
+    try {
+      const current = this.getLocalSettings() || {};
+      const updated = { ...current, ...settings };
+      localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(updated));
+    } catch (err) {
+      console.warn('saveLocalSettings error', err);
+    }
+  }
+
+  public static updateAllStudentsGradeClass(newGradeClass: string): Student[] {
+    const students = this.getLocalStudents();
+    const updated = students.map(s => ({ ...s, gradeClass: newGradeClass }));
+    this.saveLocalStudents(updated);
+    return updated;
+  }
+
   // --- Local storage helpers ---
 
-  private static getLocalStudents(): Student[] {
+  public static getLocalStudents(): Student[] {
     const raw = localStorage.getItem(STORAGE_KEY_STUDENTS);
+    const savedSettings = this.getLocalSettings();
+    const defaultClass = savedSettings?.schoolClass || '우리 반';
+
     if (!raw) {
-      this.saveLocalStudents(INITIAL_STUDENTS);
-      return INITIAL_STUDENTS;
+      const init = INITIAL_STUDENTS.map(s => ({ ...s, gradeClass: defaultClass }));
+      this.saveLocalStudents(init);
+      return init;
     }
     try {
       return JSON.parse(raw);
@@ -794,7 +826,7 @@ export class GasService {
     }
   }
 
-  private static saveLocalStudents(students: Student[]) {
+  public static saveLocalStudents(students: Student[]) {
     localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(students));
   }
 

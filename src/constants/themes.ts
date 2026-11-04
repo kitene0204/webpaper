@@ -1,4 +1,4 @@
-import { RollingTheme, LayoutId, FontId } from '../types';
+import { RollingTheme, LayoutId, FontId, ThemeId } from '../types';
 
 export const PALETTE = {
   coral: '#DE7272',
@@ -6,6 +6,54 @@ export const PALETTE = {
   butter: '#FFF6A9',
   butterLight: '#FFFDE8',
 };
+
+/**
+ * Checks if a Korean syllable has a final consonant (받침)
+ */
+export function hasJongseong(char: string): boolean {
+  if (!char) return false;
+  const code = char.charCodeAt(0);
+  if (code < 0xAC00 || code > 0xD7A3) return false;
+  return (code - 0xAC00) % 28 > 0;
+}
+
+/**
+ * Checks if target name is an adult/teacher/parent/elder
+ */
+export function isHonorificTarget(name: string): boolean {
+  if (!name) return false;
+  const clean = name.trim();
+  return (
+    clean.endsWith('선생님') ||
+    clean.endsWith('선생') ||
+    clean.endsWith('교장선생님') ||
+    clean.endsWith('교감선생님') ||
+    clean.endsWith('부모님') ||
+    clean.endsWith('어머니') ||
+    clean.endsWith('아버지') ||
+    clean.endsWith('교수님') ||
+    clean.endsWith('원장님') ||
+    clean.endsWith('코치님') ||
+    clean.endsWith('멘토님') ||
+    clean.endsWith('님')
+  );
+}
+
+/**
+ * Return grammatically natural vocative (e.g. 민준아, 지은아, 민지야, 함수현 선생님께/선생님)
+ */
+export function getKoreanVocative(name: string, isHonorific: boolean = false): string {
+  const clean = (name || '친구').trim();
+  if (isHonorific || isHonorificTarget(clean)) {
+    return `${clean}께`;
+  }
+  // Friend mode: check if it still ends with title like '님'
+  if (clean.endsWith('님')) {
+    return clean;
+  }
+  const lastChar = clean.slice(-1);
+  return hasJongseong(lastChar) ? `${clean}아` : `${clean}야`;
+}
 
 export const THEMES: Record<string, RollingTheme> = {
   birthday: {
@@ -23,7 +71,12 @@ export const THEMES: Record<string, RollingTheme> = {
     titleTextColor: 'text-white',
     badgeClass: 'bg-[#FFF6A9] text-[#6d4411] border-[#FFCA88]',
     cardCounterClass: 'text-[#FFF6A9]',
-    defaultTitleTemplate: (name) => `🎂 ${name}의 특별한 생일을 축하해! 🎉`,
+    defaultTitleTemplate: (name, isHonorific) => {
+      const isHon = isHonorific ?? isHonorificTarget(name);
+      return isHon
+        ? `🎂 ${name}의 특별한 생신을 진심으로 축하드립니다! 🎉`
+        : `🎂 ${name}의 특별한 생일을 축하해! 🎉`;
+    },
     stickers: [
       { id: 'b1', emoji: '🎂', label: '케이크' },
       { id: 'b2', emoji: '🎉', label: '폭죽' },
@@ -39,6 +92,12 @@ export const THEMES: Record<string, RollingTheme> = {
       '항상 우리 반에서 밝게 웃어줘서 고마워, 맛있는 거 많이 먹어!',
       '태어나줘서 고마워! 언제나 든든한 너를 항상 응원해 ✨',
       '생일 선물은 바로 나! 농담이고 오늘 최고로 신나는 날 보내자 🎁',
+    ],
+    suggestedHonorificPrompts: [
+      '생신을 진심으로 축하드립니다! 오늘 하루 세상에서 가장 행복하고 특별한 시간 보내세요 🎂',
+      '늘 따뜻한 사랑과 지혜로 가르쳐주시는 은혜에 깊이 감사드리며, 생신 축하드립니다 💐',
+      '선생님(어른)과 함께할 수 있어 큰 행운입니다. 항상 건강하시고 웃는 일만 가득하세요 💛',
+      '생신 축하드립니다! 늘 저희를 위해 애써주셔서 감사하고 존경합니다 🎁',
     ],
   },
 
@@ -57,7 +116,15 @@ export const THEMES: Record<string, RollingTheme> = {
     titleTextColor: 'text-white',
     badgeClass: 'bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]',
     cardCounterClass: 'text-[#BAE6FD]',
-    defaultTitleTemplate: (name) => `👋 ${name}야, 새로운 시작을 늘 응원할게! ✈️`,
+    defaultTitleTemplate: (name, isHonorific) => {
+      const isHon = isHonorific ?? isHonorificTarget(name);
+      if (isHon) {
+        return `👋 ${name}께, 새로운 시작을 온 마음으로 응원합니다! ✈️`;
+      }
+      const voc = getKoreanVocative(name, false);
+      const glue = voc.endsWith('께') ? ' ' : (voc.endsWith('님') ? ', ' : ', ');
+      return `👋 ${voc}${glue}새로운 시작을 늘 응원할게! ✈️`;
+    },
     stickers: [
       { id: 'f1', emoji: '✈️', label: '비행기' },
       { id: 'f2', emoji: '💌', label: '편지' },
@@ -73,6 +140,12 @@ export const THEMES: Record<string, RollingTheme> = {
       '너와 함께 웃고 떠들었던 소중한 추억들 평생 잊지 않을게.',
       '어디에 있든 우리는 여전히 너의 든든한 친구야! 파이팅!',
       '보고 싶을 거야! 방학 때 꼭 다시 만나서 맛있는 거 먹자 약속!',
+    ],
+    suggestedHonorificPrompts: [
+      '새로운 곳에서도 늘 건강하시고 행복한 일만 가득하시길 온 마음으로 기원하고 응원합니다 ✈️',
+      '그동안 저희를 따뜻하게 가르쳐주시고 보살펴주셔서 진심으로 감사했습니다. 잊지 못할 거예요 🥹',
+      '함께했던 소중한 가르침과 따뜻한 추억들 평생 잊지 않고 감사히 간직하겠습니다 💌',
+      '앞날에 언제나 꽃길만 펼쳐지길 두 손 모아 기원합니다. 깊이 존경하고 사랑합니다 💐',
     ],
   },
 
@@ -91,7 +164,12 @@ export const THEMES: Record<string, RollingTheme> = {
     titleTextColor: 'text-white',
     badgeClass: 'bg-[#FCE7F3] text-[#9D174D] border-[#FBCFE8]',
     cardCounterClass: 'text-[#FBCFE8]',
-    defaultTitleTemplate: (name) => `🌸 우리 반에 온 ${name}을(를) 환영해! 🌈`,
+    defaultTitleTemplate: (name, isHonorific) => {
+      const isHon = isHonorific ?? isHonorificTarget(name);
+      return isHon
+        ? `🌸 저희와 함께하게 되신 ${name}을(를) 진심으로 환영합니다! 🌈`
+        : `🌸 우리 반에 온 ${name}을(를) 환영해! 🌈`;
+    },
     stickers: [
       { id: 'w1', emoji: '🌸', label: '벚꽃' },
       { id: 'w2', emoji: '🌈', label: '무지개' },
@@ -107,6 +185,11 @@ export const THEMES: Record<string, RollingTheme> = {
       '학교 생활 적응하기 힘들면 내가 언제든 도와줄게! 친하게 지내자!',
       '오늘부터 우리 베프 1일차! 급식 같이 맛있게 먹으러 가자 🍱',
       '우리 반 분위기 정말 좋으니까 걱정 마! 환영해!',
+    ],
+    suggestedHonorificPrompts: [
+      '저희와 함께하게 되신 것을 진심으로 환영합니다! 앞으로 잘 부탁드립니다 😊',
+      '선생님(어른)과 함께 공부하고 생활하게 되어 무척 설레고 기대됩니다! 🌸',
+      '따뜻한 가르침 속에서 멋지게 배우고 성장하는 저희가 되겠습니다 🤝',
     ],
   },
 
@@ -125,7 +208,12 @@ export const THEMES: Record<string, RollingTheme> = {
     titleTextColor: 'text-[#FFF6A9]', // 황금빛 샴페인 텍스트로 칠판 그린과 완벽한 조화
     badgeClass: 'bg-[#FFF6A9] text-[#543d0b] border-[#FFCA88]',
     cardCounterClass: 'text-[#FFF6A9]',
-    defaultTitleTemplate: (name) => `🎓 ${name}의 빛나는 졸업을 축하해! 🌟`,
+    defaultTitleTemplate: (name, isHonorific) => {
+      const isHon = isHonorific ?? isHonorificTarget(name);
+      return isHon
+        ? `🎓 ${name}께 감사의 마음을 담아, 그동안 진심으로 감사드렸습니다 💐`
+        : `🎓 ${name}의 빛나는 졸업을 축하해! 🌟`;
+    },
     stickers: [
       { id: 'g1', emoji: '🎓', label: '학사모' },
       { id: 'g2', emoji: '💐', label: '꽃다발' },
@@ -141,6 +229,11 @@ export const THEMES: Record<string, RollingTheme> = {
       '너의 멋진 꿈이 꼭 이루어지길 항상 뒤에서 응원할게! 졸업 축하해!',
       '선생님 말씀도 열심히 듣고 매일 즐거웠던 추억 잊지 말자.',
       '새 학년, 새 학교에서도 넌 무조건 최고일 거야! 자랑스러운 친구야!',
+    ],
+    suggestedHonorificPrompts: [
+      '따뜻한 가르침 덕분에 올 한 해 한층 더 바르고 의젓하게 성장할 수 있었습니다. 깊이 감사드립니다 🎓',
+      '부족한 저희를 늘 믿어주시고 따뜻하게 이끌어주신 은혜 평생 잊지 않겠습니다 💐',
+      '가르쳐주신 귀한 배움을 마음에 새기고 더 넓은 세상으로 힘차게 나아가겠습니다. 존경합니다 🌟',
     ],
   },
 
@@ -159,7 +252,12 @@ export const THEMES: Record<string, RollingTheme> = {
     titleTextColor: 'text-white',
     badgeClass: 'bg-[#D1FAE5] text-[#065F46] border-[#A7F3D0]',
     cardCounterClass: 'text-[#A7F3D0]',
-    defaultTitleTemplate: (name) => `🍀 ${name}에게 전하는 따뜻한 응원 한마디! ✨`,
+    defaultTitleTemplate: (name, isHonorific) => {
+      const isHon = isHonorific ?? isHonorificTarget(name);
+      return isHon
+        ? `🍀 ${name}께 전하는 깊은 존경과 감사의 마음! ✨`
+        : `🍀 ${name}에게 전하는 따뜻한 응원 한마디! ✨`;
+    },
     stickers: [
       { id: 'c1', emoji: '🍀', label: '클로버' },
       { id: 'c2', emoji: '💛', label: '노란하트' },
@@ -176,8 +274,89 @@ export const THEMES: Record<string, RollingTheme> = {
       '힘든 일 있을 때 언제든 털어놔! 넌 언제나 소중한 사람이야.',
       '오늘 하루도 파이팅! 넌 할 수 있어!',
     ],
+    suggestedHonorificPrompts: [
+      '따뜻한 말씀과 보살핌 덕분에 매일매일 학교에 오는 시간이 행복했습니다 💛',
+      '힘들 때마다 따뜻하게 손잡아 주시고 용기 북돋아 주셔서 진심으로 감사드립니다 🍀',
+      '베풀어주신 큰 은혜와 사랑에 감사드리며, 언제나 건강하시길 기도드립니다 💐',
+    ],
   },
 };
+
+/**
+ * Multiple ready-to-use titles for theme & honorific mode
+ */
+export function getRecommendedTitles(themeId: ThemeId, name: string, isHonorific: boolean): string[] {
+  const clean = (name || '친구').trim();
+  const voc = getKoreanVocative(clean, isHonorific);
+
+  if (isHonorific) {
+    switch (themeId) {
+      case 'birthday':
+        return [
+          `🎂 ${clean}의 특별한 생신을 진심으로 축하드립니다! 🎉`,
+          `💐 ${clean}께 드리는 마음, 늘 건강하시고 행복하세요! 🎂`,
+          `✨ ${clean}의 생신을 축하드리며 언제나 존경과 감사를 전합니다 🎁`,
+        ];
+      case 'farewell':
+        return [
+          `👋 ${clean}께, 새로운 시작을 온 마음으로 응원합니다! ✈️`,
+          `💐 ${clean}, 그동안 베풀어주신 큰 은혜와 사랑 잊지 않겠습니다 💌`,
+          `✈️ ${clean}의 앞날에 늘 축복과 행복이 가득하길 기원합니다 ✨`,
+          `🌟 ${clean}과 함께한 모든 순간이 감사였습니다 🍀`,
+        ];
+      case 'welcome':
+        return [
+          `🌸 저희와 함께하게 되신 ${clean}을(를) 진심으로 환영합니다! 🌈`,
+          `💐 ${clean}의 부임을 온 마음으로 축하드리며 환영합니다! ✨`,
+          `🌈 ${clean}과 함께 만들어갈 따뜻한 시간을 기대합니다 🌸`,
+        ];
+      case 'graduation':
+        return [
+          `🎓 ${clean}께 감사의 마음을 담아, 그동안 진심으로 감사드렸습니다 💐`,
+          `🌟 ${clean}의 가르침을 마음에 품고 더 넓은 세상으로 나아가겠습니다 🎓`,
+          `💐 한 해 동안 베풀어주신 은혜에 깊이 감사드리며 건강을 기원합니다 ✨`,
+        ];
+      case 'cheering':
+      default:
+        return [
+          `🍀 ${clean}께 전하는 깊은 존경과 감사의 마음! ✨`,
+          `💐 스승의 은혜에 깊이 감사드리며, ${clean} 늘 존경합니다 💌`,
+          `💛 ${clean}의 따뜻한 사랑에 보답하는 멋진 사람이 되겠습니다 🍀`,
+        ];
+    }
+  } else {
+    switch (themeId) {
+      case 'birthday':
+        return [
+          `🎂 ${clean}의 특별한 생일을 축하해! 🎉`,
+          `🎉 ${voc}, 세상에서 제일 행복한 생일 보내! 🎂`,
+          `🎁 태어나줘서 고마워, ${clean}의 생일을 축하해! ✨`,
+        ];
+      case 'farewell':
+        return [
+          `👋 ${voc}, 새로운 시작을 늘 응원할게! ✈️`,
+          `✈️ 함께했던 소중한 시간 잊지 않을게, ${clean} 파이팅! 💌`,
+          `🍀 어디서든 반짝일 ${clean}의 새로운 출발을 응원해! ✨`,
+        ];
+      case 'welcome':
+        return [
+          `🌸 우리 반에 온 ${clean}을(를) 환영해! 🌈`,
+          `🌈 두 팔 벌려 환영해, ${clean}과 함께할 즐거운 하루하루! ✨`,
+        ];
+      case 'graduation':
+        return [
+          `🎓 ${clean}의 빛나는 졸업을 축하해! 🌟`,
+          `🌟 더 넓은 세상을 향해 날아오를 ${clean}을(를) 응원해! 🚀`,
+        ];
+      case 'cheering':
+      default:
+        return [
+          `🍀 ${clean}에게 전하는 따뜻한 응원 한마디! ✨`,
+          `💛 언제나 든든하고 멋진 ${clean}, 항상 응원해! 🔥`,
+        ];
+    }
+  }
+}
 
 export const PRESET_TITLE_COLORS = [
   { name: '생일 코랄', hex: '#DE7272', themeId: 'birthday' },

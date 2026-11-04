@@ -9,10 +9,19 @@ import {
   RefreshCw, 
   SlidersHorizontal,
   Paintbrush,
-  User
+  User,
+  GraduationCap
 } from 'lucide-react';
 import { RollingSettings, ThemeId, LayoutId, FontId, Student } from '../types';
-import { THEMES, LAYOUT_OPTIONS, FONT_OPTIONS, PRESET_TITLE_COLORS } from '../constants/themes';
+import { 
+  THEMES, 
+  LAYOUT_OPTIONS, 
+  FONT_OPTIONS, 
+  PRESET_TITLE_COLORS,
+  isHonorificTarget,
+  getRecommendedTitles,
+  getKoreanVocative
+} from '../constants/themes';
 
 interface ThemeSettingsModalProps {
   isOpen: boolean;
@@ -33,14 +42,27 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
   const [recipientName, setRecipientName] = useState<string>(
     settings.targetStudentName || currentStudent?.name || ''
   );
+  const [isHonorific, setIsHonorific] = useState<boolean>(() => {
+    if (typeof settings.honorificMode === 'boolean') return settings.honorificMode;
+    const initialName = settings.targetStudentName || currentStudent?.name || '';
+    return isHonorificTarget(initialName);
+  });
 
   // Sync form state when modal opens or settings change
   useEffect(() => {
     if (isOpen) {
       const activeName = settings.targetStudentName || currentStudent?.name || '';
+      const activeClass = settings.schoolClass || currentStudent?.gradeClass || '우리 반';
+      const hon = typeof settings.honorificMode === 'boolean' 
+        ? settings.honorificMode 
+        : isHonorificTarget(activeName);
+      
       setRecipientName(activeName);
+      setIsHonorific(hon);
       setFormSettings({
         ...settings,
+        schoolClass: activeClass,
+        honorificMode: hon,
         targetStudentName: activeName,
         titleColor: settings.titleColor || THEMES[settings.theme]?.primaryColor || '#DE7272',
       });
@@ -55,25 +77,45 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
   const handleRecipientNameChange = (newName: string) => {
     const oldName = recipientName;
     setRecipientName(newName);
+    
+    // Auto-detect if name ends with '선생님' or '님'
+    let currentHon = isHonorific;
+    if (isHonorificTarget(newName) && !isHonorific) {
+      currentHon = true;
+      setIsHonorific(true);
+    }
+
     setFormSettings(prev => {
       let updatedTitle = prev.boardTitle;
       // If previous name was in the title, replace it with the new name
       if (oldName && updatedTitle.includes(oldName)) {
         updatedTitle = updatedTitle.split(oldName).join(newName || '친구');
-      } else if (!updatedTitle || updatedTitle === currentThemeObj.defaultTitleTemplate(oldName || '친구')) {
-        updatedTitle = currentThemeObj.defaultTitleTemplate(newName || '친구');
+      } else if (!updatedTitle || updatedTitle === currentThemeObj.defaultTitleTemplate(oldName || '친구', currentHon)) {
+        updatedTitle = currentThemeObj.defaultTitleTemplate(newName || '친구', currentHon);
       }
       return {
         ...prev,
+        honorificMode: currentHon,
         targetStudentName: newName,
         boardTitle: updatedTitle,
       };
     });
   };
 
+  const handleHonorificChange = (newHon: boolean) => {
+    setIsHonorific(newHon);
+    const studentName = recipientName.trim() || currentStudent?.name || (newHon ? '선생님' : '친구');
+    const autoTitle = currentThemeObj.defaultTitleTemplate(studentName, newHon);
+    setFormSettings(prev => ({
+      ...prev,
+      honorificMode: newHon,
+      boardTitle: autoTitle,
+    }));
+  };
+
   const handleThemeChange = (newTheme: ThemeId) => {
-    const studentName = recipientName.trim() || currentStudent?.name || '친구';
-    const autoTitle = THEMES[newTheme]?.defaultTitleTemplate(studentName) || '';
+    const studentName = recipientName.trim() || currentStudent?.name || (isHonorific ? '선생님' : '친구');
+    const autoTitle = THEMES[newTheme]?.defaultTitleTemplate(studentName, isHonorific) || '';
     const themeColor = THEMES[newTheme]?.primaryColor || '#DE7272';
     // Automatically match the title color to the new theme!
     setFormSettings(prev => ({
@@ -85,20 +127,30 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
   };
 
   const handleResetTitle = () => {
-    const studentName = recipientName.trim() || currentStudent?.name || '친구';
-    const autoTitle = currentThemeObj.defaultTitleTemplate(studentName);
+    const studentName = recipientName.trim() || currentStudent?.name || (isHonorific ? '선생님' : '친구');
+    const autoTitle = currentThemeObj.defaultTitleTemplate(studentName, isHonorific);
     setFormSettings(prev => ({ ...prev, boardTitle: autoTitle }));
+  };
+
+  const handleApplyTitle = (selectedTitle: string) => {
+    setFormSettings(prev => ({ ...prev, boardTitle: selectedTitle }));
   };
 
   const handleTitleChange = (newTitle: string) => {
     setFormSettings(prev => ({ ...prev, boardTitle: newTitle }));
     // If the user modified the title directly and replaced the student name, e.g. "000의 특별한 생일"
-    const match = newTitle.match(/(?:🎂|💌|🌈|🎓|🔥|\s|^)([\w가-힣0-9]{2,12})(?:의\s*(?:특별한|빛나는|소중한|생일|졸업|전학)|(?:아|야)[,!~.\s]|에게)/);
+    const match = newTitle.match(/(?:🎂|💌|🌈|🎓|🔥|\s|^)([\w가-힣0-9]{2,12})(?:의\s*(?:특별한|빛나는|소중한|생일|생신|졸업|전학)|(?:아|야)[,!~.\s]|에게|께)/);
     if (match && match[1]) {
       const extracted = match[1].trim();
       if (extracted && extracted !== recipientName) {
         setRecipientName(extracted);
-        setFormSettings(prev => ({ ...prev, targetStudentName: extracted }));
+        const autoHon = isHonorificTarget(extracted);
+        if (autoHon) setIsHonorific(true);
+        setFormSettings(prev => ({ 
+          ...prev, 
+          targetStudentName: extracted,
+          honorificMode: autoHon ? true : prev.honorificMode,
+        }));
       }
     }
   };
@@ -109,11 +161,13 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalRecipient = recipientName.trim() || currentStudent?.name || '우리 친구';
+    const finalRecipient = recipientName.trim() || currentStudent?.name || (isHonorific ? '선생님' : '우리 친구');
     const finalSettings: RollingSettings = {
       ...formSettings,
+      schoolClass: formSettings.schoolClass.trim() || '우리 반',
+      honorificMode: isHonorific,
       targetStudentName: finalRecipient,
-      boardTitle: formSettings.boardTitle || currentThemeObj.defaultTitleTemplate(finalRecipient),
+      boardTitle: formSettings.boardTitle || currentThemeObj.defaultTitleTemplate(finalRecipient, isHonorific),
     };
     onSaveSettings(finalSettings, finalRecipient);
     onClose();
@@ -286,15 +340,81 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
                     {currentThemeObj.badge}
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-[#FFF6A9] text-[#6d4411] text-[10px] font-bold shadow-xs">
-                    주인공: {recipientName || '친구'}
+                    {isHonorific ? '선생님/주인공' : '주인공'}: {recipientName || (isHonorific ? '선생님' : '친구')}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs ${
+                    isHonorific ? 'bg-indigo-900/60 text-indigo-100 border border-indigo-300/40' : 'bg-emerald-900/40 text-emerald-100'
+                  }`}>
+                    {isHonorific ? '🎓 존댓말(경어체)' : '🎒 친구(반말)'}
                   </span>
                 </div>
                 <div className={`font-title font-semibold text-sm truncate ${currentThemeObj.titleTextColor || 'text-white'}`}>
-                  {formSettings.boardTitle || currentThemeObj.defaultTitleTemplate(recipientName || currentStudent?.name || '친구')}
+                  {formSettings.boardTitle || currentThemeObj.defaultTitleTemplate(recipientName || currentStudent?.name || (isHonorific ? '선생님' : '친구'), isHonorific)}
                 </div>
               </div>
               <div className="w-8 h-8 rounded-xl bg-white/25 flex items-center justify-center text-lg shrink-0">
                 {currentThemeObj.bannerIcon}
+              </div>
+            </div>
+
+            {/* Speech Tone Selector: 친구(반말) vs 선생님/어른(존댓말·경어체) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <GraduationCap className="w-4 h-4 text-indigo-600" />
+                  <span>말투 / 어조 선택 (반말 vs 존댓말)</span>
+                </label>
+                <span className="text-[11px] text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                  {isHonorific ? '선생님·부모님께 어울리는 존댓말 선택됨' : '친구·동급생에게 어울리는 친근한 어조 선택됨'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => handleHonorificChange(false)}
+                  className={`p-3 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                    !isHonorific
+                      ? 'border-amber-400 bg-amber-50/70 text-amber-950 font-bold ring-2 ring-amber-300 shadow-xs'
+                      : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-lg shrink-0">
+                    🎒
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <span>친구에게 (친근한 반말)</span>
+                      {!isHonorific && <Check className="w-3.5 h-3.5 text-amber-600" />}
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      "민준아 생일 축하해!", "새로운 시작을 늘 응원할게!"
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleHonorificChange(true)}
+                  className={`p-3 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                    isHonorific
+                      ? 'border-indigo-500 bg-indigo-50/80 text-indigo-950 font-bold ring-2 ring-indigo-300 shadow-xs'
+                      : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-lg shrink-0">
+                    🎓
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <span>선생님 / 어른께 (존댓말·경어체)</span>
+                      {isHonorific && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      "{recipientName ? `${recipientName}께` : '선생님께'}, 새로운 시작을 온 마음으로 응원합니다!"
+                    </div>
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -311,7 +431,7 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
                   type="text"
                   value={recipientName}
                   onChange={(e) => handleRecipientNameChange(e.target.value)}
-                  placeholder="예: 000, 이창민"
+                  placeholder="예: 함수현 선생님, 김민준"
                   className="w-full px-3.5 py-2.5 rounded-xl border-2 border-amber-300 bg-amber-50/40 text-sm font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-400 focus:bg-white transition-all shadow-xs"
                 />
                 <span className="text-[10px] text-amber-700/80 mt-1 block font-medium">
@@ -328,7 +448,7 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
                   type="text"
                   value={formSettings.schoolClass}
                   onChange={(e) => setFormSettings(prev => ({ ...prev, schoolClass: e.target.value }))}
-                  placeholder="예: 3학년 2반"
+                  placeholder="예: 6학년 1반"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-hidden focus:ring-2 focus:ring-rose-400"
                 />
                 <span className="text-[10px] text-slate-400 mt-1 block">
@@ -345,11 +465,39 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
                   title="현재 입력한 주인공 이름을 바탕으로 추천 문구를 생성합니다"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  <span>'{recipientName || '주인공'}' 추천 문구 자동 완성</span>
+                  <span>'{recipientName || (isHonorific ? '선생님' : '주인공')}' 문구 자동 완성</span>
                 </button>
                 <span className="text-[10px] text-rose-600/80 mt-1 text-center block">
-                  테마별 추천 제목으로 채우기
+                  {isHonorific ? '존댓말 추천 문구 채우기' : '친근한 추천 문구 채우기'}
                 </span>
+              </div>
+
+              {/* Clickable Quick Recommended Titles */}
+              <div className="sm:col-span-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-bold text-slate-600">
+                    💡 원클릭 추천 타이틀 (클릭 시 입력창에 바로 적용됩니다):
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    {isHonorific ? '존댓말 프리셋' : '친구 프리셋'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {getRecommendedTitles(formSettings.theme, recipientName || (isHonorific ? '선생님' : '친구'), isHonorific).map((t, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleApplyTitle(t)}
+                      className={`text-xs px-2.5 py-1.5 rounded-xl border transition-all text-left cursor-pointer ${
+                        formSettings.boardTitle === t
+                          ? 'border-rose-400 bg-rose-50 text-rose-800 font-bold ring-2 ring-rose-200'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Board Title Input */}

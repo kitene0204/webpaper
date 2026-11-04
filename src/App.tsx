@@ -10,7 +10,7 @@ import { ImageExportModal } from './components/ImageExportModal';
 import { ShareLinkModal } from './components/ShareLinkModal';
 
 import { Student, Message, RollingSettings, ThemeId } from './types';
-import { THEMES } from './constants/themes';
+import { THEMES, isHonorificTarget } from './constants/themes';
 import { GasService } from './services/gasService';
 import { Sparkles, Database, Plus, RefreshCw, PenTool } from 'lucide-react';
 
@@ -21,17 +21,22 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isConnectedToGas, setIsConnectedToGas] = useState<boolean>(GasService.isConnected());
 
-  // Board display settings
-  const [settings, setSettings] = useState<RollingSettings>({
-    theme: 'birthday',
-    layout: 'sticky',
-    font: 'himelody',
-    schoolClass: '3학년 2반',
-    boardTitle: '🎂 김민준의 특별한 생일을 축하해! 🎉',
-    showDate: true,
-    showAuthorBadge: true,
-    bgTexture: 'dots',
-    titleColor: THEMES.birthday.primaryColor,
+  // Board display settings (persisted across sessions)
+  const [settings, setSettings] = useState<RollingSettings>(() => {
+    const saved = GasService.getLocalSettings();
+    return {
+      theme: (saved?.theme as ThemeId) || 'birthday',
+      layout: (saved?.layout as any) || 'sticky',
+      font: (saved?.font as any) || 'himelody',
+      schoolClass: saved?.schoolClass || '우리 반',
+      boardTitle: saved?.boardTitle || '🎂 김민준의 특별한 생일을 축하해! 🎉',
+      showDate: saved?.showDate ?? true,
+      showAuthorBadge: saved?.showAuthorBadge ?? true,
+      bgTexture: saved?.bgTexture || 'dots',
+      titleColor: saved?.titleColor || THEMES.birthday.primaryColor,
+      honorificMode: saved?.honorificMode ?? false,
+      targetStudentName: saved?.targetStudentName,
+    };
   });
 
   // Modals state
@@ -55,25 +60,35 @@ export default function App() {
       }
 
       let studentList = await GasService.getStudents();
+      const saved = GasService.getLocalSettings();
+      const activeClass = saved?.schoolClass || settings.schoolClass || '우리 반';
 
-      // If a specific student was requested in URL (?to=이창민)
+      // If a specific student was requested in URL (?to=함수현 선생님)
       if (targetStudent) {
         let found = studentList.find((s) => s.name === targetStudent);
         if (!found) {
-          const res = await GasService.addStudent(targetStudent, '우리 반', 'birthday');
+          const res = await GasService.addStudent(targetStudent, activeClass, 'farewell');
           found = res.student;
           studentList = await GasService.getStudents();
         }
         setStudents(studentList);
         setCurrentStudent(found);
-        const themeId = found.customTheme || 'birthday';
-        setSettings((s) => ({
-          ...s,
-          targetStudentName: found!.name,
-          theme: themeId,
-          boardTitle: THEMES[themeId].defaultTitleTemplate(found!.name),
-          titleColor: THEMES[themeId].primaryColor,
-        }));
+        const themeId = found.customTheme || 'farewell';
+        const isHon = found.isHonorific ?? (isHonorificTarget(found.name) || Boolean(saved?.honorificMode));
+        
+        setSettings((s) => {
+          const updated: RollingSettings = {
+            ...s,
+            targetStudentName: found!.name,
+            theme: themeId,
+            schoolClass: activeClass,
+            honorificMode: isHon,
+            boardTitle: THEMES[themeId].defaultTitleTemplate(found!.name, isHon),
+            titleColor: THEMES[themeId].primaryColor,
+          };
+          GasService.saveLocalSettings(updated);
+          return updated;
+        });
         return;
       }
 
@@ -87,20 +102,28 @@ export default function App() {
           const initial = studentList[0];
           // update title based on initial student
           const themeId = initial.customTheme || 'birthday';
-          setSettings((s) => ({
-            ...s,
-            targetStudentName: initial.name,
-            theme: themeId,
-            boardTitle: THEMES[themeId].defaultTitleTemplate(initial.name),
-            titleColor: THEMES[themeId].primaryColor,
-          }));
+          const isHon = initial.isHonorific ?? (isHonorificTarget(initial.name) || Boolean(saved?.honorificMode));
+          
+          setSettings((s) => {
+            const updated: RollingSettings = {
+              ...s,
+              targetStudentName: initial.name,
+              theme: themeId,
+              schoolClass: activeClass,
+              honorificMode: isHon,
+              boardTitle: THEMES[themeId].defaultTitleTemplate(initial.name, isHon),
+              titleColor: THEMES[themeId].primaryColor,
+            };
+            GasService.saveLocalSettings(updated);
+            return updated;
+          });
           return initial;
         });
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [settings.schoolClass]);
 
   // Load messages for current student
   const loadMessages = useCallback(async (student: Student) => {
@@ -126,13 +149,20 @@ export default function App() {
   const handleSelectStudent = (student: Student) => {
     setCurrentStudent(student);
     const themeToApply = student.customTheme || settings.theme;
-    setSettings((prev) => ({
-      ...prev,
-      targetStudentName: student.name,
-      theme: themeToApply,
-      boardTitle: THEMES[themeToApply].defaultTitleTemplate(student.name),
-      titleColor: THEMES[themeToApply].primaryColor,
-    }));
+    const isHon = student.isHonorific ?? (isHonorificTarget(student.name) || Boolean(settings.honorificMode));
+    
+    setSettings((prev) => {
+      const updated: RollingSettings = {
+        ...prev,
+        targetStudentName: student.name,
+        theme: themeToApply,
+        honorificMode: isHon,
+        boardTitle: THEMES[themeToApply].defaultTitleTemplate(student.name, isHon),
+        titleColor: THEMES[themeToApply].primaryColor,
+      };
+      GasService.saveLocalSettings(updated);
+      return updated;
+    });
   };
 
   // Add single student
@@ -225,40 +255,87 @@ export default function App() {
     );
   };
 
-  // Handle saving design/theme settings with instant sync to recipient student
+  // Handle saving design/theme settings with instant sync to recipient student & persistence
   const handleSaveThemeSettings = async (newSettings: RollingSettings, newRecipientName?: string) => {
     const targetName = (newRecipientName || newSettings.targetStudentName || '').trim();
+    const isHon = Boolean(newSettings.honorificMode);
+    const chosenClass = (newSettings.schoolClass || '').trim() || '우리 반';
     
-    setSettings({
+    // 1. Immediately persist settings in state and local storage
+    const mergedSettings: RollingSettings = {
       ...newSettings,
+      schoolClass: chosenClass,
+      honorificMode: isHon,
       targetStudentName: targetName || newSettings.targetStudentName,
-    });
+    };
+    setSettings(mergedSettings);
+    GasService.saveLocalSettings(mergedSettings);
+
+    // 2. Sync class name across all students in the class
+    GasService.updateAllStudentsGradeClass(chosenClass);
+    setStudents((prev) => prev.map((s) => ({ ...s, gradeClass: chosenClass })));
 
     if (targetName) {
-      // 1. If recipient matches current student, nothing to migrate
+      // 1. If recipient matches current student, sync class & honorific
       if (currentStudent && currentStudent.name === targetName) {
+        const updated = {
+          ...currentStudent,
+          gradeClass: chosenClass,
+          isHonorific: isHon,
+          customTheme: mergedSettings.theme,
+        };
+        setCurrentStudent(updated);
+        setStudents((prev) =>
+          prev.map((s) => (s.name === targetName ? updated : s))
+        );
+        GasService.saveLocalStudents(
+          students.map((s) => (s.name === targetName ? updated : s))
+        );
         return;
       }
 
       // 2. If student with targetName already exists in student list, select them
       const existing = students.find((s) => s.name === targetName);
       if (existing) {
-        setCurrentStudent(existing);
-        loadMessages(existing);
+        const updated = {
+          ...existing,
+          gradeClass: chosenClass,
+          isHonorific: isHon,
+          customTheme: mergedSettings.theme,
+        };
+        setCurrentStudent(updated);
+        loadMessages(updated);
+        setStudents((prev) =>
+          prev.map((s) => (s.name === targetName ? updated : s))
+        );
+        GasService.saveLocalStudents(
+          students.map((s) => (s.name === targetName ? updated : s))
+        );
         return;
       }
 
       // 3. If new recipient name, rename/migrate active student or create student
       if (currentStudent) {
         const oldName = currentStudent.name;
-        const updated = await GasService.renameStudent(oldName, targetName);
+        const updated = await GasService.renameStudent(
+          oldName, 
+          targetName, 
+          chosenClass, 
+          mergedSettings.theme
+        );
+        updated.isHonorific = isHon;
         setStudents((prev) =>
-          prev.map((s) => (s.name === oldName ? { ...updated, name: targetName } : s))
+          prev.map((s) => (s.name === oldName ? updated : s))
         );
         setCurrentStudent(updated);
         loadMessages(updated);
       } else {
-        const res = await GasService.addStudent(targetName, newSettings.schoolClass || '우리 반', newSettings.theme);
+        const res = await GasService.addStudent(
+          targetName, 
+          chosenClass, 
+          mergedSettings.theme
+        );
+        res.student.isHonorific = isHon;
         setStudents((prev) => [...prev, res.student]);
         setCurrentStudent(res.student);
         loadMessages(res.student);
@@ -364,6 +441,7 @@ export default function App() {
         onDeleteStudent={handleDeleteStudent}
         onClearSampleStudents={handleClearSampleStudents}
         isConnectedToGas={isConnectedToGas}
+        schoolClass={settings.schoolClass}
       />
 
       <ThemeSettingsModal
@@ -380,6 +458,7 @@ export default function App() {
         students={students}
         currentStudent={currentStudent}
         currentTheme={currentTheme}
+        settings={settings}
         onSubmitMessage={handleAddMessage}
       />
 

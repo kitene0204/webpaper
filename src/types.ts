@@ -21,9 +21,10 @@ export interface RollingTheme {
   bannerGradient: string;
   boardBg: string;
   boardPatternClass: string;
-  defaultTitleTemplate: (studentName: string) => string;
+  defaultTitleTemplate: (studentName: string, isHonorific?: boolean) => string;
   stickers: Sticker[];
   suggestedPrompts: string[];
+  suggestedHonorificPrompts?: string[];
   bannerIcon: string;
   titleTextColor?: string;
   badgeClass?: string;
@@ -38,6 +39,7 @@ export interface Student {
   messageCount: number;
   lastUpdated?: string;
   customTheme?: ThemeId;
+  isHonorific?: boolean;
 }
 
 export interface Message {
@@ -65,6 +67,7 @@ export interface RollingSettings {
   customBannerMessage?: string;
   titleColor?: string; // Hex color for top title banner & theme sync
   targetStudentName?: string; // Recipient / hero student name (e.g. 주인공)
+  honorificMode?: boolean; // 존댓말 / 경어체 모드 (선생님, 부모님, 어른께 보낼 때)
 }
 
 export interface PlacedSticker {

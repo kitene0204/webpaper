@@ -202,8 +202,9 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
     );
   };
 
-  const studentName = settings.targetStudentName || currentStudent?.name || '우리 친구';
-  const boardTitle = settings.boardTitle || currentTheme.defaultTitleTemplate(studentName);
+  const isHon = Boolean(settings.honorificMode);
+  const studentName = settings.targetStudentName || currentStudent?.name || (isHon ? '선생님' : '우리 친구');
+  const boardTitle = settings.boardTitle || currentTheme.defaultTitleTemplate(studentName, isHon);
   const currentDate = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric',
     month: 'long',
@@ -298,6 +299,11 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                 <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/30 shrink-0">
                   {currentTheme.badge}
                 </span>
+                {isHon && (
+                  <span className="px-3 py-1 rounded-full bg-indigo-950/40 backdrop-blur-md text-indigo-100 text-xs font-bold border border-indigo-200/40 shrink-0">
+                    🎓 존댓말(경어체)
+                  </span>
+                )}
                 {settings.showDate && (
                   <span className="flex items-center gap-1 text-xs text-white/90 ml-1 font-pretendard shrink-0">
                     <Calendar className="w-3.5 h-3.5" />
@@ -328,7 +334,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
               </div>
               <div>
                 <div className="text-[11px] uppercase tracking-wider text-white/80 font-bold">
-                  주인공
+                  {isHon ? '선생님 / 주인공' : '주인공'}
                 </div>
                 <div className="text-lg sm:text-xl font-title font-semibold text-white leading-tight">{studentName}</div>
                 <div className={`text-xs font-bold mt-0.5 ${cardCounterClass}`}>

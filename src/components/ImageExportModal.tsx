@@ -44,7 +44,7 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({
       setDataUrl(null);
       setError(null);
     }
-  }, [isOpen, currentStudent, settings.targetStudentName]);
+  }, [isOpen, currentStudent, settings.targetStudentName, settings.schoolClass]);
 
   const generateImage = async () => {
     setLoading(true);

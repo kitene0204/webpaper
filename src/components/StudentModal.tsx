@@ -26,6 +26,7 @@ interface StudentModalProps {
   onDeleteStudent?: (name: string) => Promise<void>;
   onClearSampleStudents?: () => Promise<void>;
   isConnectedToGas: boolean;
+  schoolClass?: string;
 }
 
 export const StudentModal: React.FC<StudentModalProps> = ({
@@ -39,6 +40,7 @@ export const StudentModal: React.FC<StudentModalProps> = ({
   onDeleteStudent,
   onClearSampleStudents,
   isConnectedToGas,
+  schoolClass = '우리 반',
 }) => {
   const [tab, setTab] = useState<'list' | 'single' | 'bulk'>('list');
   const [search, setSearch] = useState('');
@@ -46,13 +48,20 @@ export const StudentModal: React.FC<StudentModalProps> = ({
   
   // Single add form
   const [newName, setNewName] = useState('');
-  const [newGrade, setNewGrade] = useState('3학년 2반');
+  const [newGrade, setNewGrade] = useState(schoolClass);
   const [selectedTheme, setSelectedTheme] = useState<ThemeId>('birthday');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Bulk add form
   const [bulkText, setBulkText] = useState('');
-  const [bulkGrade, setBulkGrade] = useState('3학년 2반');
+  const [bulkGrade, setBulkGrade] = useState(schoolClass);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setNewGrade(schoolClass);
+      setBulkGrade(schoolClass);
+    }
+  }, [isOpen, schoolClass]);
 
   if (!isOpen) return null;
 

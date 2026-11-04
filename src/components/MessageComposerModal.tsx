@@ -11,8 +11,8 @@ import {
   HelpCircle 
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Student, RollingTheme, Message, FontId } from '../types';
-import { NOTE_COLORS, FONT_OPTIONS } from '../constants/themes';
+import { Student, RollingTheme, Message, FontId, RollingSettings } from '../types';
+import { NOTE_COLORS, FONT_OPTIONS, isHonorificTarget } from '../constants/themes';
 
 interface MessageComposerModalProps {
   isOpen: boolean;
@@ -20,6 +20,7 @@ interface MessageComposerModalProps {
   students: Student[];
   currentStudent: Student | null;
   currentTheme: RollingTheme;
+  settings?: RollingSettings;
   onSubmitMessage: (msg: Omit<Message, 'id' | 'createdAt'>) => Promise<void>;
 }
 
@@ -32,15 +33,29 @@ const NICKNAME_NOUNS = [
   '토끼', '펭귄', '다람쥐', '돌고래', '햄스터', '딸기', '푸딩'
 ];
 
+const HONORIFIC_SIGNATURES = [
+  '선생님을 존경하는 제자',
+  '감사한 마음을 전하는 제자 올림',
+  '선생님을 항상 응원하는 학생',
+  '마음 깊이 존경하는 제자',
+  '늘 감사한 제자 드림',
+  '든든한 반 제자 올림'
+];
+
 export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
   isOpen,
   onClose,
   students,
   currentStudent,
   currentTheme,
+  settings,
   onSubmitMessage,
 }) => {
   const [recipient, setRecipient] = useState<string>(currentStudent?.name || '');
+  const [isHonorific, setIsHonorific] = useState<boolean>(() => {
+    if (settings?.honorificMode) return true;
+    return isHonorificTarget(currentStudent?.name || '');
+  });
   const [author, setAuthor] = useState<string>('');
   const [content, setContent] = useState<string>('');
   const [color, setColor] = useState<string>('butter');
@@ -54,8 +69,19 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
   useEffect(() => {
     if (currentStudent) {
       setRecipient(currentStudent.name);
+      if (settings?.honorificMode || isHonorificTarget(currentStudent.name)) {
+        setIsHonorific(true);
+      }
     }
-  }, [currentStudent]);
+  }, [currentStudent, settings?.honorificMode]);
+
+  useEffect(() => {
+    if (recipient) {
+      if (isHonorificTarget(recipient)) {
+        setIsHonorific(true);
+      }
+    }
+  }, [recipient]);
 
   useEffect(() => {
     if (currentTheme.stickers.length > 0) {
@@ -66,9 +92,14 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
   if (!isOpen) return null;
 
   const handleRandomNickname = () => {
-    const adj = NICKNAME_ADJECTIVES[Math.floor(Math.random() * NICKNAME_ADJECTIVES.length)];
-    const noun = NICKNAME_NOUNS[Math.floor(Math.random() * NICKNAME_NOUNS.length)];
-    setAuthor(`${adj} ${noun}`);
+    if (isHonorific) {
+      const sig = HONORIFIC_SIGNATURES[Math.floor(Math.random() * HONORIFIC_SIGNATURES.length)];
+      setAuthor(sig);
+    } else {
+      const adj = NICKNAME_ADJECTIVES[Math.floor(Math.random() * NICKNAME_ADJECTIVES.length)];
+      const noun = NICKNAME_NOUNS[Math.floor(Math.random() * NICKNAME_NOUNS.length)];
+      setAuthor(`${adj} ${noun}`);
+    }
   };
 
   const handleApplyPrompt = (promptText: string) => {
@@ -78,6 +109,10 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
       setContent(prev => `${prev}\n${promptText}`);
     }
   };
+
+  const activePrompts = isHonorific && currentTheme.suggestedHonorificPrompts?.length
+    ? currentTheme.suggestedHonorificPrompts
+    : currentTheme.suggestedPrompts;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,14 +154,25 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
         <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-[#DE7272]/15 via-[#FFCA88]/25 to-[#FFF6A9]/40">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-[#DE7272] text-white flex items-center justify-center text-xl shadow-xs">
-              ✏️
+              {isHonorific ? '🎓' : '✏️'}
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-800 font-jua">
-                롤링페이퍼 메시지 남기기
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-800 font-jua">
+                  {isHonorific ? '존댓말(경어체) 메시지 남기기' : '롤링페이퍼 메시지 남기기'}
+                </h2>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  isHonorific 
+                    ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' 
+                    : 'bg-[#FFF6A9] text-[#6d4411] border border-[#FFCA88]'
+                }`}>
+                  {isHonorific ? '선생님/어른께' : '친구에게'}
+                </span>
+              </div>
               <p className="text-xs text-slate-500">
-                친구에게 따뜻한 마음과 추억의 한마디를 적어보세요
+                {isHonorific 
+                  ? '선생님, 부모님, 어른께 따뜻한 감사와 존경의 마음을 전해보세요' 
+                  : '친구에게 따뜻한 마음과 추억의 한마디를 적어보세요'}
               </p>
             </div>
           </div>
@@ -139,13 +185,44 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
         </div>
 
         {/* Content */}
-        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto flex-1 space-y-5">
+        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto flex-1 space-y-4">
           
+          {/* Quick Tone Toggle Bar */}
+          <div className="flex items-center justify-between p-2 rounded-2xl bg-slate-50 border border-slate-200">
+            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5 ml-1">
+              <span>말투 선택:</span>
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsHonorific(false)}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  !isHonorific
+                    ? 'bg-amber-400 text-amber-950 shadow-xs'
+                    : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'
+                }`}
+              >
+                🎒 친구에게 (반말)
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsHonorific(true)}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  isHonorific
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'
+                }`}
+              >
+                🎓 선생님/어른께 (존댓말)
+              </button>
+            </div>
+          </div>
+
           {/* Row 1: Recipient & Author */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                받는 친구 <span className="text-[#DE7272]">*</span>
+                {isHonorific ? '받는 분 (선생님/주인공)' : '받는 친구'} <span className="text-[#DE7272]">*</span>
               </label>
               <select
                 value={recipient}
@@ -163,7 +240,7 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-bold text-slate-700">
-                  보내는 사람 (이름 또는 별명)
+                  {isHonorific ? '보내는 사람 (이름 또는 서명)' : '보내는 사람 (이름 또는 별명)'}
                 </label>
                 <button
                   type="button"
@@ -171,14 +248,14 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
                   className="text-[11px] text-[#DE7272] hover:text-[#c45353] flex items-center gap-1 font-bold cursor-pointer"
                 >
                   <Dices className="w-3.5 h-3.5" />
-                  <span>귀여운 별명 뽑기</span>
+                  <span>{isHonorific ? '정중한 서명 뽑기' : '귀여운 별명 뽑기'}</span>
                 </button>
               </div>
               <input
                 type="text"
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
-                placeholder="예: 짝꿍 민준이, 친절한 토끼 (비워두면 익명)"
+                placeholder={isHonorific ? '예: 제자 민준 올림, 든든한 짝꿍 (비워두면 익명)' : '예: 짝꿍 민준이, 친절한 토끼 (비워두면 익명)'}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-[#DE7272]"
               />
             </div>
@@ -196,7 +273,7 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
                 className="text-[11px] text-[#6d4411] bg-[#FFF6A9] hover:bg-[#ffefa0] border border-[#FFCA88] px-2.5 py-0.5 rounded-full flex items-center gap-1 font-bold transition-colors cursor-pointer"
               >
                 <Sparkles className="w-3 h-3 text-[#DE7272]" />
-                <span>{showPrompts ? '추천 문구 닫기' : '무슨 말을 쓸지 고민될 때?'}</span>
+                <span>{showPrompts ? '추천 문구 닫기' : (isHonorific ? '존댓말 추천 문구 보기' : '무슨 말을 쓸지 고민될 때?')}</span>
               </button>
             </div>
 
@@ -204,10 +281,10 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
             {showPrompts && (
               <div className="mb-2 p-3 bg-[#FFFDE8] rounded-2xl border border-[#FFCA88] space-y-1.5">
                 <p className="text-xs font-bold text-[#6d4411]">
-                  💡 클릭하면 메시지 입력창에 바로 들어갑니다:
+                  💡 {isHonorific ? '선생님/어른께 어울리는 추천 문구 (클릭 시 자동 입력):' : '클릭하면 메시지 입력창에 바로 들어갑니다:'}
                 </p>
                 <div className="flex flex-col gap-1.5">
-                  {currentTheme.suggestedPrompts.map((p, idx) => (
+                  {activePrompts.map((p, idx) => (
                     <button
                       key={idx}
                       type="button"
@@ -226,7 +303,11 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
               rows={4}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder={`${recipient ? `${recipient}에게` : '친구에게'} 전하고 싶은 따뜻한 축하와 응원의 메시지를 적어보세요...`}
+              placeholder={
+                isHonorific
+                  ? `${recipient ? `${recipient}께` : '선생님께'} 전하고 싶은 감사와 존경, 응원의 마음을 정성껏 적어보세요...`
+                  : `${recipient ? `${recipient}에게` : '친구에게'} 전하고 싶은 따뜻한 축하와 응원의 메시지를 적어보세요...`
+              }
               className={`w-full p-3.5 rounded-2xl border border-slate-200 text-base focus:outline-hidden focus:ring-2 focus:ring-[#DE7272] ${fontClass}`}
             />
             <div className="flex justify-between items-center text-xs text-slate-400 mt-1">

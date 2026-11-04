@@ -61,13 +61,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               {currentTheme.bannerIcon}
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-lg tracking-tight text-slate-800 font-title font-semibold">
                   우리반 롤링페이퍼
                 </span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-[#FFF6A9] text-[#6d4411] border border-[#FFCA88]">
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-[#FFF6A9] text-[#6d4411] border border-[#FFCA88] shadow-2xs">
                   {settings.schoolClass || '우리 반'}
                 </span>
+                {settings.honorificMode && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
+                    🎓 존댓말
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">
                 친구들의 마음을 모아 따뜻한 이미지로 간직해요
