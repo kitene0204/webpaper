@@ -11,7 +11,7 @@ import {
   Share2,
   AlertCircle
 } from 'lucide-react';
-import { Student, ThemeId } from '../types';
+import { Student, ThemeId, RollingSettings } from '../types';
 import { THEMES } from '../constants/themes';
 import { GasService } from '../services/gasService';
 
@@ -27,6 +27,7 @@ interface StudentModalProps {
   onClearSampleStudents?: () => Promise<void>;
   isConnectedToGas: boolean;
   schoolClass?: string;
+  settings?: RollingSettings;
 }
 
 export const StudentModal: React.FC<StudentModalProps> = ({
@@ -41,6 +42,7 @@ export const StudentModal: React.FC<StudentModalProps> = ({
   onClearSampleStudents,
   isConnectedToGas,
   schoolClass = '우리 반',
+  settings,
 }) => {
   const [tab, setTab] = useState<'list' | 'single' | 'bulk'>('list');
   const [search, setSearch] = useState('');
@@ -73,7 +75,7 @@ export const StudentModal: React.FC<StudentModalProps> = ({
 
   const handleCopyLink = async (e: React.MouseEvent, studentName: string) => {
     e.stopPropagation();
-    const url = GasService.getShareUrl(studentName);
+    const url = GasService.getShareUrl(studentName, settings);
     try {
       await navigator.clipboard.writeText(url);
       setCopiedStudentName(studentName);

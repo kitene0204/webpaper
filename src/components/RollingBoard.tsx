@@ -345,7 +345,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                     type="button"
                     onClick={async () => {
                       const shareTargetName = settings.targetStudentName || currentStudent?.name || studentName;
-                      const url = GasService.getShareUrl(shareTargetName);
+                      const url = GasService.getShareUrl(shareTargetName, settings);
                       try {
                         await navigator.clipboard.writeText(url);
                         setCopiedShare(true);

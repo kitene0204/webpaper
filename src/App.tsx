@@ -21,21 +21,27 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isConnectedToGas, setIsConnectedToGas] = useState<boolean>(GasService.isConnected());
 
-  // Board display settings (persisted across sessions)
+  // Board display settings (persisted across sessions + hydrated from shared link URL)
   const [settings, setSettings] = useState<RollingSettings>(() => {
     const saved = GasService.getLocalSettings();
+    const { urlSettings, targetStudent } = GasService.initFromUrl();
+    const merged = { ...saved, ...urlSettings };
+    const defaultTheme = (merged?.theme as ThemeId) || 'birthday';
+    const recipient = targetStudent || merged?.targetStudentName;
+    const isHon = merged?.honorificMode ?? (recipient ? isHonorificTarget(recipient) : false);
+
     return {
-      theme: (saved?.theme as ThemeId) || 'birthday',
-      layout: (saved?.layout as any) || 'sticky',
-      font: (saved?.font as any) || 'himelody',
-      schoolClass: saved?.schoolClass || '우리 반',
-      boardTitle: saved?.boardTitle || '🎂 김민준의 특별한 생일을 축하해! 🎉',
-      showDate: saved?.showDate ?? true,
-      showAuthorBadge: saved?.showAuthorBadge ?? true,
-      bgTexture: saved?.bgTexture || 'dots',
-      titleColor: saved?.titleColor || THEMES.birthday.primaryColor,
-      honorificMode: saved?.honorificMode ?? false,
-      targetStudentName: saved?.targetStudentName,
+      theme: defaultTheme,
+      layout: (merged?.layout as any) || 'sticky',
+      font: (merged?.font as any) || 'himelody',
+      schoolClass: merged?.schoolClass || '우리 반',
+      boardTitle: merged?.boardTitle || (recipient ? THEMES[defaultTheme].defaultTitleTemplate(recipient, isHon) : '🎂 김민준의 특별한 생일을 축하해! 🎉'),
+      showDate: merged?.showDate ?? true,
+      showAuthorBadge: merged?.showAuthorBadge ?? true,
+      bgTexture: merged?.bgTexture || 'dots',
+      titleColor: merged?.titleColor || THEMES[defaultTheme].primaryColor,
+      honorificMode: isHon,
+      targetStudentName: recipient,
     };
   });
 
@@ -54,28 +60,37 @@ export default function App() {
   const loadStudents = useCallback(async () => {
     setLoading(true);
     try {
-      const { targetStudent, isNewGasConnected } = GasService.initFromUrl();
+      const { targetStudent, isNewGasConnected, urlSettings } = GasService.initFromUrl();
       if (isNewGasConnected) {
         setIsConnectedToGas(true);
       }
 
       let studentList = await GasService.getStudents();
       const saved = GasService.getLocalSettings();
-      const activeClass = saved?.schoolClass || settings.schoolClass || '우리 반';
+      const activeClass = urlSettings?.schoolClass || saved?.schoolClass || settings.schoolClass || '우리 반';
 
       // If a specific student was requested in URL (?to=함수현 선생님)
       if (targetStudent) {
         let found = studentList.find((s) => s.name === targetStudent);
+        const urlThemeId = urlSettings?.theme as ThemeId | undefined;
         if (!found) {
-          const res = await GasService.addStudent(targetStudent, activeClass, 'farewell');
+          const res = await GasService.addStudent(targetStudent, activeClass, urlThemeId || 'farewell');
           found = res.student;
           studentList = await GasService.getStudents();
         }
         setStudents(studentList);
         setCurrentStudent(found);
-        const themeId = found.customTheme || 'farewell';
-        const isHon = found.isHonorific ?? (isHonorificTarget(found.name) || Boolean(saved?.honorificMode));
         
+        // Priority for theme: URL param > student's saved theme > 'farewell'
+        const themeId = urlThemeId || found.customTheme || 'farewell';
+        const isHon = typeof urlSettings?.honorificMode === 'boolean'
+          ? urlSettings.honorificMode
+          : (found.isHonorific ?? (isHonorificTarget(found.name) || Boolean(saved?.honorificMode)));
+
+        // Priority for title & color: URL param > saved settings > default template
+        const resolvedTitle = urlSettings?.boardTitle || saved?.boardTitle || THEMES[themeId].defaultTitleTemplate(found.name, isHon);
+        const resolvedColor = urlSettings?.titleColor || saved?.titleColor || THEMES[themeId].primaryColor;
+
         setSettings((s) => {
           const updated: RollingSettings = {
             ...s,
@@ -83,8 +98,10 @@ export default function App() {
             theme: themeId,
             schoolClass: activeClass,
             honorificMode: isHon,
-            boardTitle: THEMES[themeId].defaultTitleTemplate(found!.name, isHon),
-            titleColor: THEMES[themeId].primaryColor,
+            boardTitle: resolvedTitle,
+            titleColor: resolvedColor,
+            layout: (urlSettings?.layout as any) || s.layout,
+            font: (urlSettings?.font as any) || s.font,
           };
           GasService.saveLocalSettings(updated);
           return updated;
@@ -100,10 +117,15 @@ export default function App() {
             return prev;
           }
           const initial = studentList[0];
-          // update title based on initial student
-          const themeId = initial.customTheme || 'birthday';
-          const isHon = initial.isHonorific ?? (isHonorificTarget(initial.name) || Boolean(saved?.honorificMode));
+          const urlThemeId = urlSettings?.theme as ThemeId | undefined;
+          const themeId = urlThemeId || initial.customTheme || 'birthday';
+          const isHon = typeof urlSettings?.honorificMode === 'boolean'
+            ? urlSettings.honorificMode
+            : (initial.isHonorific ?? (isHonorificTarget(initial.name) || Boolean(saved?.honorificMode)));
           
+          const resolvedTitle = urlSettings?.boardTitle || saved?.boardTitle || THEMES[themeId].defaultTitleTemplate(initial.name, isHon);
+          const resolvedColor = urlSettings?.titleColor || saved?.titleColor || THEMES[themeId].primaryColor;
+
           setSettings((s) => {
             const updated: RollingSettings = {
               ...s,
@@ -111,8 +133,10 @@ export default function App() {
               theme: themeId,
               schoolClass: activeClass,
               honorificMode: isHon,
-              boardTitle: THEMES[themeId].defaultTitleTemplate(initial.name, isHon),
-              titleColor: THEMES[themeId].primaryColor,
+              boardTitle: resolvedTitle,
+              titleColor: resolvedColor,
+              layout: (urlSettings?.layout as any) || s.layout,
+              font: (urlSettings?.font as any) || s.font,
             };
             GasService.saveLocalSettings(updated);
             return updated;
@@ -442,6 +466,7 @@ export default function App() {
         onClearSampleStudents={handleClearSampleStudents}
         isConnectedToGas={isConnectedToGas}
         schoolClass={settings.schoolClass}
+        settings={settings}
       />
 
       <ThemeSettingsModal
@@ -473,6 +498,13 @@ export default function App() {
         onClose={() => setIsImageExportOpen(false)}
         currentStudent={currentStudent}
         currentTheme={currentTheme}
+        settings={settings}
+      />
+
+      <ShareLinkModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        currentStudent={currentStudent}
         settings={settings}
       />
     </div>

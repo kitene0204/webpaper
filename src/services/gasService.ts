@@ -382,9 +382,13 @@ export class GasService {
   }
 
   /**
-   * Parse URL parameters on initial load (?to=이창민&gas=...)
+   * Parse URL parameters on initial load (?to=함수현+선생님&theme=graduation&title=...&gas=...)
    */
-  public static initFromUrl(): { targetStudent?: string; isNewGasConnected?: boolean } {
+  public static initFromUrl(): { 
+    targetStudent?: string; 
+    isNewGasConnected?: boolean;
+    urlSettings?: Partial<RollingSettings>;
+  } {
     if (typeof window === 'undefined') return {};
     try {
       const params = new URLSearchParams(window.location.search);
@@ -397,9 +401,30 @@ export class GasService {
       }
 
       const toParam = params.get('to') || params.get('student');
+      const themeParam = params.get('theme') as any;
+      const titleParam = params.get('title');
+      const classParam = params.get('class');
+      const colorParam = params.get('color');
+      const layoutParam = params.get('layout') as any;
+      const fontParam = params.get('font') as any;
+      const honParam = params.get('hon');
+
+      const urlSettings: Partial<RollingSettings> = {};
+      if (themeParam) urlSettings.theme = themeParam;
+      if (titleParam) urlSettings.boardTitle = titleParam;
+      if (classParam) urlSettings.schoolClass = classParam;
+      if (colorParam) {
+        const clean = colorParam.replace(/^#/, '').trim();
+        if (clean) urlSettings.titleColor = `#${clean}`;
+      }
+      if (layoutParam) urlSettings.layout = layoutParam;
+      if (fontParam) urlSettings.font = fontParam;
+      if (honParam !== null) urlSettings.honorificMode = honParam === '1' || honParam === 'true';
+
       return {
         targetStudent: toParam ? toParam.trim() : undefined,
         isNewGasConnected,
+        urlSettings: Object.keys(urlSettings).length > 0 ? urlSettings : undefined,
       };
     } catch {
       return {};
@@ -407,15 +432,40 @@ export class GasService {
   }
 
   /**
-   * Generate student share link for students and teachers
+   * Generate student share link for students and teachers with full design & title synchronization
    */
-  public static getShareUrl(studentName?: string): string {
+  public static getShareUrl(studentName?: string, customSettings?: Partial<RollingSettings>): string {
     if (typeof window === 'undefined') return '';
     const base = window.location.origin + window.location.pathname;
     const params = new URLSearchParams();
 
-    if (studentName) {
-      params.set('to', studentName);
+    const currentSettings = customSettings || this.getLocalSettings() || {};
+    const recipient = (studentName || currentSettings.targetStudentName || '').trim();
+
+    if (recipient) {
+      params.set('to', recipient);
+    }
+    if (currentSettings.theme) {
+      params.set('theme', currentSettings.theme);
+    }
+    if (currentSettings.boardTitle) {
+      params.set('title', currentSettings.boardTitle);
+    }
+    if (currentSettings.schoolClass) {
+      params.set('class', currentSettings.schoolClass);
+    }
+    if (currentSettings.titleColor) {
+      const cleanHex = currentSettings.titleColor.replace(/^#/, '').trim();
+      if (cleanHex) params.set('color', cleanHex);
+    }
+    if (currentSettings.layout) {
+      params.set('layout', currentSettings.layout);
+    }
+    if (currentSettings.font) {
+      params.set('font', currentSettings.font);
+    }
+    if (typeof currentSettings.honorificMode === 'boolean') {
+      params.set('hon', currentSettings.honorificMode ? '1' : '0');
     }
     if (this.gasUrl) {
       params.set('gas', this.gasUrl);

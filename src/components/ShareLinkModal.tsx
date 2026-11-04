@@ -11,19 +11,21 @@ import {
   ExternalLink,
   CheckCircle2
 } from 'lucide-react';
-import { Student } from '../types';
+import { Student, RollingSettings } from '../types';
 import { GasService } from '../services/gasService';
 
 interface ShareLinkModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentStudent: Student | null;
+  settings?: RollingSettings;
 }
 
 export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
   isOpen,
   onClose,
   currentStudent,
+  settings,
 }) => {
   const [copiedType, setCopiedType] = useState<'student' | 'all' | null>(null);
 
@@ -33,9 +35,9 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
   const isConnected = GasService.isConnected();
   const gasUrl = GasService.getGasUrl();
 
-  // Links
-  const studentShareUrl = GasService.getShareUrl(studentName);
-  const allShareUrl = GasService.getShareUrl();
+  // Links with complete design & title synchronization
+  const studentShareUrl = GasService.getShareUrl(studentName, settings);
+  const allShareUrl = GasService.getShareUrl(undefined, settings);
 
   const handleCopy = async (text: string, type: 'student' | 'all') => {
     try {
