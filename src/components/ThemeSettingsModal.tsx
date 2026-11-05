@@ -20,7 +20,9 @@ import {
   PRESET_TITLE_COLORS,
   isHonorificTarget,
   getRecommendedTitles,
-  getKoreanVocative
+  getKoreanVocative,
+  getDefaultSubtitle,
+  getRecommendedSubtitles
 } from '../constants/themes';
 
 interface ThemeSettingsModalProps {
@@ -57,6 +59,8 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
         ? settings.honorificMode 
         : isHonorificTarget(activeName);
       
+      const activeSubtitle = settings.boardSubtitle || getDefaultSubtitle(settings.theme, hon);
+
       setRecipientName(activeName);
       setIsHonorific(hon);
       setFormSettings({
@@ -64,6 +68,7 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
         schoolClass: activeClass,
         honorificMode: hon,
         targetStudentName: activeName,
+        boardSubtitle: activeSubtitle,
         titleColor: settings.titleColor || THEMES[settings.theme]?.primaryColor || '#DE7272',
       });
     }
@@ -93,21 +98,31 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
 
   const handleHonorificChange = (newHon: boolean) => {
     setIsHonorific(newHon);
-    setFormSettings(prev => ({
-      ...prev,
-      honorificMode: newHon,
-    }));
+    setFormSettings(prev => {
+      const prevDefaultSubtitle = getDefaultSubtitle(prev.theme, isHonorific);
+      const isCustomizedSubtitle = prev.boardSubtitle && prev.boardSubtitle !== prevDefaultSubtitle;
+      return {
+        ...prev,
+        honorificMode: newHon,
+        boardSubtitle: isCustomizedSubtitle ? prev.boardSubtitle : getDefaultSubtitle(prev.theme, newHon),
+      };
+    });
   };
 
   const handleThemeChange = (newTheme: ThemeId) => {
     const themeColor = THEMES[newTheme]?.primaryColor || '#DE7272';
-    // Match the theme color to the new theme while keeping user's custom title intact
-    setFormSettings(prev => ({
-      ...prev,
-      theme: newTheme,
-      titleColor: themeColor,
-      boardTitle: prev.boardTitle || THEMES[newTheme]?.defaultTitleTemplate(recipientName || currentStudent?.name || (isHonorific ? '선생님' : '친구'), isHonorific),
-    }));
+    // Match the theme color to the new theme while keeping user's custom title/subtitle intact
+    setFormSettings(prev => {
+      const prevDefaultSubtitle = getDefaultSubtitle(prev.theme, isHonorific);
+      const isCustomizedSubtitle = prev.boardSubtitle && prev.boardSubtitle !== prevDefaultSubtitle;
+      return {
+        ...prev,
+        theme: newTheme,
+        titleColor: themeColor,
+        boardTitle: prev.boardTitle || THEMES[newTheme]?.defaultTitleTemplate(recipientName || currentStudent?.name || (isHonorific ? '선생님' : '친구'), isHonorific),
+        boardSubtitle: isCustomizedSubtitle ? prev.boardSubtitle : getDefaultSubtitle(newTheme, isHonorific),
+      };
+    });
   };
 
   const handleResetTitle = () => {
@@ -121,8 +136,20 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
   };
 
   const handleTitleChange = (newTitle: string) => {
-    // Directly update boardTitle without tampering with recipient name!
     setFormSettings(prev => ({ ...prev, boardTitle: newTitle }));
+  };
+
+  const handleSubtitleChange = (newSub: string) => {
+    setFormSettings(prev => ({ ...prev, boardSubtitle: newSub }));
+  };
+
+  const handleResetSubtitle = () => {
+    const autoSub = getDefaultSubtitle(formSettings.theme, isHonorific);
+    setFormSettings(prev => ({ ...prev, boardSubtitle: autoSub }));
+  };
+
+  const handleApplySubtitle = (selectedSub: string) => {
+    setFormSettings(prev => ({ ...prev, boardSubtitle: selectedSub }));
   };
 
   const handleResetThemeColor = () => {
@@ -138,6 +165,7 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
       honorificMode: isHonorific,
       targetStudentName: finalRecipient,
       boardTitle: formSettings.boardTitle || currentThemeObj.defaultTitleTemplate(finalRecipient, isHonorific),
+      boardSubtitle: formSettings.boardSubtitle?.trim() || getDefaultSubtitle(formSettings.theme, isHonorific),
     };
     onSaveSettings(finalSettings, finalRecipient);
     onClose();
@@ -321,6 +349,9 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
                 <div className={`font-title font-semibold text-sm truncate ${currentThemeObj.titleTextColor || 'text-white'}`}>
                   {formSettings.boardTitle || currentThemeObj.defaultTitleTemplate(recipientName || currentStudent?.name || (isHonorific ? '선생님' : '친구'), isHonorific)}
                 </div>
+                <div className="text-[11px] text-white/90 truncate mt-0.5 font-pretendard">
+                  {formSettings.boardSubtitle || getDefaultSubtitle(formSettings.theme, isHonorific)}
+                </div>
               </div>
               <div className="w-8 h-8 rounded-xl bg-white/25 flex items-center justify-center text-lg shrink-0">
                 {currentThemeObj.bannerIcon}
@@ -496,6 +527,63 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
                       {t}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Board Subtitle / Tagline Input (Direct typing & freely editable) */}
+              <div className="sm:col-span-3 pt-2 border-t border-slate-200/70">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <span>롤링페이퍼 하단 부제목/안내 문구 (직접 작성)</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100/70 px-1.5 py-0.2 rounded-md">
+                      자유롭게 수정 가능
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleResetSubtitle}
+                      className="text-[10px] text-indigo-700 hover:text-indigo-900 flex items-center gap-1 font-semibold underline cursor-pointer"
+                      title="테마 및 어조(존댓말)에 어울리는 기본 추천 문구로 되돌립니다"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>기본 문구로 채우기</span>
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={formSettings.boardSubtitle ?? ''}
+                  onChange={(e) => handleSubtitleChange(e.target.value)}
+                  placeholder="예: 함께했던 소중한 시간 잊지 않을게, 새로운 곳에서도 반짝이길!"
+                  className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-300 bg-white text-sm font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 shadow-xs"
+                />
+                <span className="text-[11px] text-slate-500 mt-1 block">
+                  메인 타이틀 바로 아래에 표시되는 설명 문구입니다. 원하는 문구로 자유롭게 직접 수정하실 수 있습니다.
+                </span>
+
+                {/* Quick Subtitle Recommendations */}
+                <div className="pt-2">
+                  <span className="text-[11px] font-bold text-slate-600 block mb-1">
+                    💡 빠른 추천 부제목 (원클릭 시 위 부제목 입력창에 적용):
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {getRecommendedSubtitles(formSettings.theme, isHonorific).map((st, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleApplySubtitle(st)}
+                        className={`text-xs px-2.5 py-1.5 rounded-xl border transition-all text-left cursor-pointer ${
+                          formSettings.boardSubtitle === st
+                            ? 'border-indigo-400 bg-indigo-50 text-indigo-900 font-bold ring-2 ring-indigo-200'
+                            : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        {st}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

@@ -409,10 +409,12 @@ export class GasService {
       const layoutParam = params.get('layout') as any;
       const fontParam = params.get('font') as any;
       const honParam = params.get('hon');
+      const subParam = params.get('sub') || params.get('subtitle');
 
       const urlSettings: Partial<RollingSettings> = {};
       if (themeParam) urlSettings.theme = themeParam;
       if (titleParam) urlSettings.boardTitle = titleParam;
+      if (subParam) urlSettings.boardSubtitle = subParam;
       if (classParam) urlSettings.schoolClass = classParam;
       if (colorParam) {
         const clean = colorParam.replace(/^#/, '').trim();
@@ -458,6 +460,10 @@ export class GasService {
         title = title.split(currentTarget).join(recipient);
       }
       params.set('title', title);
+    }
+
+    if (currentSettings.boardSubtitle) {
+      params.set('sub', currentSettings.boardSubtitle);
     }
 
     if (currentSettings.schoolClass) {

@@ -6,7 +6,7 @@ import {
   RollingSettings,
   PlacedSticker 
 } from '../types';
-import { NOTE_COLORS, FONT_OPTIONS } from '../constants/themes';
+import { NOTE_COLORS, FONT_OPTIONS, getDefaultSubtitle } from '../constants/themes';
 import { GasService } from '../services/gasService';
 import { StickerDecorateLayer } from './StickerDecorateLayer';
 import { 
@@ -208,6 +208,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
   const isHon = Boolean(settings.honorificMode);
   const studentName = settings.targetStudentName || currentStudent?.name || (isHon ? '선생님' : '우리 친구');
   const boardTitle = settings.boardTitle || currentTheme.defaultTitleTemplate(studentName, isHon);
+  const boardSubtitle = settings.boardSubtitle || getDefaultSubtitle(settings.theme, isHon);
   const currentDate = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric',
     month: 'long',
@@ -332,18 +333,17 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                 )}
               </div>
 
-              {/* Title strictly guaranteed to be on ONE single line (whitespace-nowrap with responsive sizing and ellipsis) */}
-              <div className="overflow-hidden">
-                <h1 
-                  title={boardTitle}
-                  className={`text-lg sm:text-2xl md:text-[26px] lg:text-3xl xl:text-4xl font-title font-semibold tracking-tight ${titleTextColor} drop-shadow-xs leading-normal whitespace-nowrap overflow-hidden text-ellipsis`}
-                >
-                  {boardTitle}
-                </h1>
-              </div>
+              {/* Title without truncation: wraps naturally without clipping words or adding ellipsis */}
+              <h1 
+                title={boardTitle}
+                className={`text-xl sm:text-2xl md:text-3xl lg:text-[34px] font-title font-semibold tracking-tight ${titleTextColor} drop-shadow-xs leading-snug sm:leading-tight break-keep pt-0.5`}
+              >
+                {boardTitle}
+              </h1>
 
-              <p className="text-xs sm:text-sm md:text-base text-white/95 font-pretendard whitespace-nowrap overflow-hidden text-ellipsis">
-                {currentTheme.tagline}
+              {/* Subtitle / Description freely editable without clipping */}
+              <p className="text-xs sm:text-sm md:text-base text-white/95 font-pretendard break-keep leading-relaxed pt-0.5">
+                {boardSubtitle}
               </p>
             </div>
 

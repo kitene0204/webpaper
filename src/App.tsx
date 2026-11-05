@@ -10,7 +10,7 @@ import { ImageExportModal } from './components/ImageExportModal';
 import { ShareLinkModal } from './components/ShareLinkModal';
 
 import { Student, Message, RollingSettings, ThemeId } from './types';
-import { THEMES, isHonorificTarget } from './constants/themes';
+import { THEMES, isHonorificTarget, getDefaultSubtitle } from './constants/themes';
 import { GasService } from './services/gasService';
 import { Sparkles, Database, Plus, RefreshCw, PenTool } from 'lucide-react';
 
@@ -36,6 +36,7 @@ export default function App() {
       font: (merged?.font as any) || 'himelody',
       schoolClass: merged?.schoolClass || '우리 반',
       boardTitle: merged?.boardTitle || (recipient ? THEMES[defaultTheme].defaultTitleTemplate(recipient, isHon) : '🎂 김민준의 특별한 생일을 축하해! 🎉'),
+      boardSubtitle: merged?.boardSubtitle || getDefaultSubtitle(defaultTheme, isHon),
       showDate: merged?.showDate ?? true,
       showAuthorBadge: merged?.showAuthorBadge ?? true,
       bgTexture: merged?.bgTexture || 'dots',
@@ -92,6 +93,8 @@ export default function App() {
         const resolvedTitle = urlSettings?.boardTitle || saved?.boardTitle || THEMES[themeId].defaultTitleTemplate(found.name, isHon);
         const resolvedColor = urlSettings?.titleColor || saved?.titleColor || THEMES[themeId].primaryColor;
 
+        const resolvedSubtitle = urlSettings?.boardSubtitle || saved?.boardSubtitle || getDefaultSubtitle(themeId, isHon);
+
         setSettings((s) => {
           const updated: RollingSettings = {
             ...s,
@@ -100,6 +103,7 @@ export default function App() {
             schoolClass: activeClass,
             honorificMode: isHon,
             boardTitle: resolvedTitle,
+            boardSubtitle: resolvedSubtitle,
             titleColor: resolvedColor,
             layout: (urlSettings?.layout as any) || s.layout,
             font: (urlSettings?.font as any) || s.font,
@@ -125,6 +129,7 @@ export default function App() {
             : (initial.isHonorific ?? (isHonorificTarget(initial.name) || Boolean(saved?.honorificMode)));
           
           const resolvedTitle = urlSettings?.boardTitle || saved?.boardTitle || THEMES[themeId].defaultTitleTemplate(initial.name, isHon);
+          const resolvedSubtitle = urlSettings?.boardSubtitle || saved?.boardSubtitle || getDefaultSubtitle(themeId, isHon);
           const resolvedColor = urlSettings?.titleColor || saved?.titleColor || THEMES[themeId].primaryColor;
 
           setSettings((s) => {
@@ -135,6 +140,7 @@ export default function App() {
               schoolClass: activeClass,
               honorificMode: isHon,
               boardTitle: resolvedTitle,
+              boardSubtitle: resolvedSubtitle,
               titleColor: resolvedColor,
               layout: (urlSettings?.layout as any) || s.layout,
               font: (urlSettings?.font as any) || s.font,
@@ -177,12 +183,17 @@ export default function App() {
     const isHon = student.isHonorific ?? (isHonorificTarget(student.name) || Boolean(settings.honorificMode));
     
     setSettings((prev) => {
+      const prevDefaultSubtitle = getDefaultSubtitle(prev.theme, Boolean(prev.honorificMode));
+      const isCustomizedSubtitle = prev.boardSubtitle && prev.boardSubtitle !== prevDefaultSubtitle;
+      const subtitleToApply = isCustomizedSubtitle ? prev.boardSubtitle : getDefaultSubtitle(themeToApply, isHon);
+
       const updated: RollingSettings = {
         ...prev,
         targetStudentName: student.name,
         theme: themeToApply,
         honorificMode: isHon,
         boardTitle: THEMES[themeToApply].defaultTitleTemplate(student.name, isHon),
+        boardSubtitle: subtitleToApply,
         titleColor: THEMES[themeToApply].primaryColor,
       };
       GasService.saveLocalSettings(updated);
@@ -197,12 +208,15 @@ export default function App() {
       await loadStudents();
       setCurrentStudent(res.student);
       const appliedTheme = theme || 'birthday';
+      const isHon = isHonorificTarget(res.student.name);
       setSettings((prev) => ({
         ...prev,
         targetStudentName: res.student.name,
         theme: appliedTheme,
         schoolClass: gradeClass,
-        boardTitle: THEMES[appliedTheme].defaultTitleTemplate(res.student.name),
+        honorificMode: isHon,
+        boardTitle: THEMES[appliedTheme].defaultTitleTemplate(res.student.name, isHon),
+        boardSubtitle: prev.boardSubtitle || getDefaultSubtitle(appliedTheme, isHon),
         titleColor: THEMES[appliedTheme].primaryColor,
       }));
     }

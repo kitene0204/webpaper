@@ -61,6 +61,7 @@ export interface RollingSettings {
   font: FontId;
   schoolClass: string;
   boardTitle: string;
+  boardSubtitle?: string; // 하단 부제목/안내 문구 (자유롭게 수정 가능)
   showDate: boolean;
   showAuthorBadge: boolean;
   bgTexture: 'dots' | 'grid' | 'plain' | 'cork';

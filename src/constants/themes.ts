@@ -358,6 +358,116 @@ export function getRecommendedTitles(themeId: ThemeId, name: string, isHonorific
   }
 }
 
+/**
+ * Returns default subtitle according to theme and honorific mode
+ */
+export function getDefaultSubtitle(themeId: ThemeId, isHonorific: boolean): string {
+  if (isHonorific) {
+    switch (themeId) {
+      case 'birthday':
+        return '세상에서 가장 특별한 날, 늘 건강하시고 행복한 일만 가득하시길 기원합니다!';
+      case 'farewell':
+        return '함께했던 소중한 가르침과 시간 잊지 않겠습니다, 새로운 곳에서도 늘 건강하세요!';
+      case 'welcome':
+        return '저희와 함께하게 되신 것을 온 마음으로 환영하며, 앞으로 잘 부탁드립니다!';
+      case 'graduation':
+        return '가르쳐주신 큰 은혜 마음에 깊이 새기며, 더 넓은 세상으로 힘차게 나아가겠습니다!';
+      case 'cheering':
+      default:
+        return '평소 전하지 못했던 존경과 감사의 마음을 정성껏 담아 전해드립니다!';
+    }
+  } else {
+    switch (themeId) {
+      case 'birthday':
+        return '세상에서 가장 특별한 너의 생일을 진심으로 축하해!';
+      case 'farewell':
+        return '함께했던 소중한 시간 잊지 않을게, 새로운 곳에서도 반짝이길!';
+      case 'welcome':
+        return '우리 반에 온 걸 두 팔 벌려 환영해! 함께 즐거운 추억 만들자!';
+      case 'graduation':
+        return '한 해 동안 함께 울고 웃었던 우리, 더 넓은 세상을 향해 날아오르자!';
+      case 'cheering':
+      default:
+        return '평소에 전하지 못했던 칭찬과 고마운 마음을 아낌없이 보내요!';
+    }
+  }
+}
+
+/**
+ * Returns recommended subtitles for quick one-click selection
+ */
+export function getRecommendedSubtitles(themeId: ThemeId, isHonorific: boolean): string[] {
+  if (isHonorific) {
+    switch (themeId) {
+      case 'birthday':
+        return [
+          '세상에서 가장 특별한 날, 늘 건강하시고 행복한 일만 가득하시길 기원합니다!',
+          '늘 따뜻한 가르침과 사랑으로 이끌어주시는 은혜에 깊이 감사드립니다 💐',
+          '오늘 하루 그 누구보다 행복하고 보람찬 시간 보내시길 바랍니다 🎂',
+        ];
+      case 'farewell':
+        return [
+          '함께했던 소중한 가르침과 시간 잊지 않겠습니다, 새로운 곳에서도 늘 건강하세요!',
+          '새로운 출발을 온 마음으로 응원하며, 앞날에 축복과 행복만 가득하길 기원합니다 ✨',
+          '베풀어주신 따뜻한 사랑과 은혜 평생 가슴 깊이 간직하겠습니다 💌',
+        ];
+      case 'welcome':
+        return [
+          '저희와 함께하게 되신 것을 온 마음으로 환영하며, 앞으로 잘 부탁드립니다!',
+          '선생님(어른)과 함께할 수 있어 무척 설레고 기쁩니다. 따뜻한 시간 만들어가요 🌸',
+          '새로운 가족이 되어주셔서 감사드리며, 즐겁고 보람찬 하루하루가 되시길 바랍니다 🌈',
+        ];
+      case 'graduation':
+        return [
+          '가르쳐주신 큰 은혜 마음에 깊이 새기며, 더 넓은 세상으로 힘차게 나아가겠습니다!',
+          '부족한 저희를 늘 따뜻하게 믿고 이끌어주신 사랑에 깊이 감사드립니다 💐',
+          '소중한 가르침 잊지 않고 늘 바르고 성실하게 살아가겠습니다 🎓',
+        ];
+      case 'cheering':
+      default:
+        return [
+          '평소 전하지 못했던 존경과 감사의 마음을 정성껏 담아 전해드립니다!',
+          '늘 든든한 버팀목이 되어주셔서 진심으로 감사드리고 존경합니다 💛',
+          '항상 건강하시고 웃음과 행복이 가득한 날들만 이어지시길 기원합니다 🍀',
+        ];
+    }
+  } else {
+    switch (themeId) {
+      case 'birthday':
+        return [
+          '세상에서 가장 특별한 너의 생일을 진심으로 축하해!',
+          '오늘 하루 세상에서 제일 맛있는 거 많이 먹고 행복한 날 보내 🎂',
+          '우리 반의 소중한 비타민! 태어나줘서 정말 고마워 ✨',
+        ];
+      case 'farewell':
+        return [
+          '함께했던 소중한 시간 잊지 않을게, 새로운 곳에서도 반짝이길!',
+          '새로운 학교에서도 멋진 친구들 많이 사귀고 늘 행복해, 연락 꼭 해 ✈️',
+          '너와 함께했던 모든 추억 영원히 기억할게! 어디서든 파이팅이야 💌',
+        ];
+      case 'welcome':
+        return [
+          '우리 반에 온 걸 두 팔 벌려 환영해! 함께 즐거운 추억 만들자!',
+          '모르는 거 있으면 언제든 물어봐! 오늘부터 우리 단짝 1일차 🌈',
+          '우리 반 분위기 정말 최고니까 걱정 말고 즐겁게 학교생활 하자 🌸',
+        ];
+      case 'graduation':
+        return [
+          '한 해 동안 함께 울고 웃었던 우리, 더 넓은 세상을 향해 날아오르자!',
+          '소중했던 추억 잊지 말고 새 학년에서도 멋지게 날아올라라 🎓',
+          '우리의 우정은 영원해! 더 멋진 꿈을 향해 힘차게 출발하자 🚀',
+        ];
+      case 'cheering':
+      default:
+        return [
+          '평소에 전하지 못했던 칭찬과 고마운 마음을 아낌없이 보내요!',
+          '언제나 밝고 친절한 네가 있어서 우리 반이 매일매일 행복해 🍀',
+          '너의 꿈을 항상 뒤에서 든든하게 응원할게! 넌 무조건 최고야 👍',
+        ];
+    }
+  }
+}
+
 export const PRESET_TITLE_COLORS = [
   { name: '생일 코랄', hex: '#DE7272', themeId: 'birthday' },
   { name: '석별 인디고', hex: '#3E72A8', themeId: 'farewell' },
