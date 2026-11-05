@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { 
   Student, 
   Message, 
@@ -28,10 +28,11 @@ import {
   ArrowUpDown, 
   ChevronDown,
   Palette,
-  Pencil
+  Pencil,
+  Printer
 } from 'lucide-react';
 
-export type MessageSortOption = 'newest' | 'oldest' | 'author';
+export type MessageSortOption = 'newest' | 'oldest' | 'author' | 'a3-compact';
 
 interface RollingBoardProps {
   currentStudent: Student | null;
@@ -230,6 +231,285 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
       return 'bg-grid-chalkboard';
     }
     return `${currentTheme.boardBg} ${currentTheme.boardPatternClass}`;
+  };
+
+  // Estimate visual height weight of a note card for A3 compact packing
+  const getMessageWeight = useCallback((msg: Message): number => {
+    const lines = msg.content.split('\n');
+    let totalLines = 0;
+    for (const line of lines) {
+      totalLines += Math.max(1, Math.ceil(line.length / 20));
+    }
+    // Base card padding/header/author is ~6 units, each line of text is ~1.5 units
+    return 6 + totalLines * 1.5;
+  }, []);
+
+  const numColumns = settings.layout === 'grid' ? 3 : 4;
+
+  // Greedy bin-packing: distribute messages across columns to balance total height
+  // and neatly place short notes above and below each other without empty gaps
+  const balancedColumns = useMemo(() => {
+    if (sortBy !== 'a3-compact') return [];
+    const cols: Message[][] = Array.from({ length: numColumns }, () => []);
+    const colWeights: number[] = new Array(numColumns).fill(0);
+
+    // Sort descending by weight so longer notes are allocated first, then short notes fill remaining gaps
+    const sorted = [...filteredMessages].sort(
+      (a, b) => getMessageWeight(b) - getMessageWeight(a)
+    );
+
+    for (const msg of sorted) {
+      // Find the column with the minimum accumulated weight
+      let minCol = 0;
+      for (let i = 1; i < numColumns; i++) {
+        if (colWeights[i] < colWeights[minCol]) {
+          minCol = i;
+        }
+      }
+      cols[minCol].push(msg);
+      colWeights[minCol] += getMessageWeight(msg);
+    }
+
+    return cols;
+  }, [filteredMessages, sortBy, numColumns, getMessageWeight]);
+
+  // Card renderer for all 4 layouts (sticky, grid, polaroid, corkboard)
+  const renderCard = (msg: Message, index: number) => {
+    const colorConf = NOTE_COLORS[msg.color] || NOTE_COLORS.yellow;
+    const fontCls = FONT_OPTIONS.find((f) => f.id === msg.font)?.fontClass || 'font-himelody';
+    const rot = msg.rotation !== undefined ? msg.rotation : ((index % 5) - 2) * 1.5;
+
+    // 1. Sticky Notes Layout
+    if (settings.layout === 'sticky') {
+      return (
+        <div
+          key={msg.id}
+          style={{ transform: `rotate(${rot}deg)` }}
+          className={`group relative p-5 rounded-2xl ${colorConf.bg} ${colorConf.border} border shadow-md hover:shadow-xl hover:scale-105 hover:z-20 transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[180px] break-inside-avoid`}
+          onClick={() => setSelectedMessage(msg)}
+        >
+          {/* Scotch tape styling on top */}
+          <div className="tape-top" />
+
+          {/* Top sticker & zoom button */}
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-2xl drop-shadow-xs">{msg.sticker}</span>
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {onEditMessage && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditMessage(msg);
+                  }}
+                  className="p-1 rounded-md bg-white/80 hover:bg-white text-slate-600 hover:text-amber-600 shadow-2xs transition-all cursor-pointer"
+                  title="이름 / 내용 수정하기"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedMessage(msg);
+                }}
+                className="p-1 rounded-md bg-white/80 hover:bg-white text-slate-600 hover:text-slate-900 shadow-2xs transition-all cursor-pointer"
+                title="자세히 보기"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Note Content */}
+          <p
+            className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 whitespace-pre-wrap break-keep`}
+          >
+            {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
+          </p>
+
+          {/* Bottom Author Tag */}
+          <div className="pt-2 border-t border-black/5 flex items-center justify-between text-xs mt-auto">
+            <span className="font-bold text-slate-800 font-jua">
+              From. {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}
+            </span>
+            <span className="text-[10px] text-slate-400">
+              {msg.createdAt.split(' ')[0]}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // 2. Grid Layout
+    if (settings.layout === 'grid') {
+      return (
+        <div
+          key={msg.id}
+          onClick={() => setSelectedMessage(msg)}
+          className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all p-5 flex flex-col justify-between cursor-pointer hover:border-slate-300 break-inside-avoid"
+        >
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{msg.sticker}</span>
+              <span className="font-bold text-sm text-slate-800 font-jua">
+                {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}
+              </span>
+            </div>
+            <span className="text-[11px] text-slate-400">{msg.createdAt.split(' ')[0]}</span>
+          </div>
+          <p className={`text-base text-slate-700 leading-relaxed ${fontCls} my-2 whitespace-pre-wrap break-keep`}>
+            {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
+          </p>
+          <div className="pt-2.5 border-t border-slate-100 mt-2 flex items-center justify-between text-xs">
+            {onEditMessage && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditMessage(msg);
+                }}
+                className="text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 cursor-pointer hover:underline"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                <span>수정하기</span>
+              </button>
+            )}
+            <span className="text-xs text-rose-500 font-bold hover:underline ml-auto">
+              자세히 보기 →
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // 3. Polaroid Layout
+    if (settings.layout === 'polaroid') {
+      const polRot = ((index % 6) - 3) * 1.5;
+      return (
+        <div
+          key={msg.id}
+          style={{ transform: `rotate(${polRot}deg)` }}
+          onClick={() => setSelectedMessage(msg)}
+          className="bg-white p-3.5 pb-5 rounded-2xl shadow-md hover:shadow-xl hover:scale-105 hover:z-20 transition-all cursor-pointer border border-slate-200/80 flex flex-col group justify-between break-inside-avoid"
+        >
+          {/* Polaroid inner frame */}
+          <div
+            className={`p-4 rounded-xl ${colorConf.bg} min-h-[170px] flex flex-col justify-between relative border border-black/5 shadow-2xs`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-2xl drop-shadow-2xs">{msg.sticker}</span>
+              <div className="flex items-center gap-1">
+                {onEditMessage && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditMessage(msg);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded-md bg-white/80 hover:bg-white text-slate-700 hover:text-amber-600 shadow-2xs transition-all cursor-pointer"
+                    title="수정하기"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedMessage(msg);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 rounded-md bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 shadow-2xs transition-all cursor-pointer"
+                  title="자세히 보기"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <p
+              className={`text-sm sm:text-[15px] leading-relaxed text-slate-800 ${fontCls} my-1 whitespace-pre-wrap break-keep`}
+            >
+              {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
+            </p>
+
+            <div className="mt-2 text-right">
+              <span className="text-[10px] text-black/40 font-mono">
+                {msg.createdAt.split(' ')[0]}
+              </span>
+            </div>
+          </div>
+
+          {/* Polaroid handwritten caption */}
+          <div className="mt-3 px-1 text-center font-poorstory font-bold text-base text-slate-700 truncate">
+            - {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}의 마음 -
+          </div>
+        </div>
+      );
+    }
+
+    // 4. Corkboard Layout
+    const corkRot = ((index % 5) - 2) * 2;
+    return (
+      <div
+        key={msg.id}
+        style={{ transform: `rotate(${corkRot}deg)` }}
+        onClick={() => setSelectedMessage(msg)}
+        className={`group relative p-5 pt-6 rounded-xl ${colorConf.bg} ${colorConf.border} border-2 shadow-lg hover:shadow-2xl hover:scale-105 transition-all cursor-pointer flex flex-col justify-between min-h-[190px] break-inside-avoid`}
+      >
+        {/* Pushpin at top center */}
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[#DE7272] shadow-md border-2 border-white flex items-center justify-center text-[10px] text-white font-bold">
+          📌
+        </div>
+
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-2xl">{msg.sticker}</span>
+          <div className="flex items-center gap-1.5">
+            {onEditMessage && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditMessage(msg);
+                }}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded-md bg-white/80 hover:bg-white text-slate-700 hover:text-amber-600 shadow-2xs transition-all cursor-pointer"
+                title="수정하기"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedMessage(msg);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-1 rounded-md bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 shadow-2xs transition-all cursor-pointer"
+              title="자세히 보기"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-[10px] text-slate-500 font-mono">
+              {msg.createdAt.split(' ')[0]}
+            </span>
+          </div>
+        </div>
+
+        <p className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 whitespace-pre-wrap break-keep`}>
+          {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
+        </p>
+
+        <div className="pt-2 border-t border-black/10 flex justify-between items-center text-xs mt-auto">
+          <span className="font-bold text-slate-900 font-jua">
+            To. {studentName}
+          </span>
+          <span className="font-bold text-slate-700 font-jua">
+            From. {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}
+          </span>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -473,9 +753,25 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                       <option value="newest">최신순</option>
                       <option value="oldest">오래된순</option>
                       <option value="author">작성자 이름순</option>
+                      <option value="a3-compact">🖨️ A3 인쇄 밀착 정렬 (빈 공간 최소화)</option>
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none" />
                   </div>
+
+                  {/* A3 Compact Print Packing 1-Click Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setSortBy(prev => prev === 'a3-compact' ? 'newest' : 'a3-compact')}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
+                      sortBy === 'a3-compact'
+                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white ring-2 ring-indigo-300 shadow-xs'
+                        : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200/80'
+                    }`}
+                    title="A3 한 장에 잘 들어오도록 짧은 편지들을 위아래로 밀착 배치하여 빈 공간을 최소화합니다"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>{sortBy === 'a3-compact' ? '✓ A3 밀착 정렬 켜짐' : 'A3 한 장 밀착 정렬'}</span>
+                  </button>
 
                   {/* Decorate Mode Toggle Button */}
                   <button
@@ -517,12 +813,23 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                     )}
                   </span>
                   <span className="text-slate-300">·</span>
-                  <span className="text-[11px] text-slate-600 font-semibold bg-slate-100/90 px-2 py-0.5 rounded-md flex items-center gap-1 border border-slate-200/60">
-                    <ArrowUpDown className="w-2.5 h-2.5 text-slate-400" />
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 border ${
+                    sortBy === 'a3-compact'
+                      ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
+                      : 'bg-slate-100/90 text-slate-600 border-slate-200/60'
+                  }`}>
+                    {sortBy === 'a3-compact' ? <Printer className="w-2.5 h-2.5" /> : <ArrowUpDown className="w-2.5 h-2.5 text-slate-400" />}
                     {sortBy === 'newest' && '최신순 정렬'}
                     {sortBy === 'oldest' && '오래된순 정렬'}
                     {sortBy === 'author' && '작성자 이름순 정렬'}
+                    {sortBy === 'a3-compact' && 'A3 인쇄 밀착 정렬 (빈틈 최소화)'}
                   </span>
+                  {sortBy === 'a3-compact' && (
+                    <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <span>✨</span>
+                      <span>짧은 편지들이 위아래 빈틈 없이 밀착 정렬되었습니다.</span>
+                    </span>
+                  )}
                   {searchQuery.trim() && (
                     <button
                       type="button"
@@ -647,271 +954,19 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
           ) : (
             /* Layout renderer with filteredMessages */
             <div>
-              {/* Sticky Notes Layout */}
-              {settings.layout === 'sticky' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-start">
-                  {filteredMessages.map((msg, index) => {
-                    const colorConf = NOTE_COLORS[msg.color] || NOTE_COLORS.yellow;
-                    const fontCls =
-                      FONT_OPTIONS.find((f) => f.id === msg.font)?.fontClass || 'font-himelody';
-                    const rot = msg.rotation !== undefined ? msg.rotation : ((index % 5) - 2) * 1.5;
-
-                    return (
-                      <div
-                        key={msg.id}
-                        style={{ transform: `rotate(${rot}deg)` }}
-                        className={`group relative p-5 rounded-2xl ${colorConf.bg} ${colorConf.border} border shadow-md hover:shadow-xl hover:scale-105 hover:z-20 transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[180px]`}
-                        onClick={() => setSelectedMessage(msg)}
-                      >
-                        {/* Scotch tape styling on top */}
-                        <div className="tape-top" />
-
-                        {/* Top sticker & zoom button */}
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-2xl drop-shadow-xs">{msg.sticker}</span>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {onEditMessage && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onEditMessage(msg);
-                                }}
-                                className="p-1 rounded-md bg-white/80 hover:bg-white text-slate-600 hover:text-amber-600 shadow-2xs transition-all cursor-pointer"
-                                title="이름 / 내용 수정하기"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedMessage(msg);
-                              }}
-                              className="p-1 rounded-md bg-white/80 hover:bg-white text-slate-600 hover:text-slate-900 shadow-2xs transition-all cursor-pointer"
-                              title="자세히 보기"
-                            >
-                              <Maximize2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Note Content: completely visible without line-clamp truncation */}
-                        <p
-                          className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 whitespace-pre-wrap break-keep`}
-                        >
-                          {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
-                        </p>
-
-                        {/* Bottom Author Tag */}
-                        <div className="pt-2 border-t border-black/5 flex items-center justify-between text-xs mt-auto">
-                          <span className="font-bold text-slate-800 font-jua">
-                            From. {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            {msg.createdAt.split(' ')[0]}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+              {sortBy === 'a3-compact' ? (
+                /* A3 Compact Balanced Columns: places short notes vertically above and below each other without row gaps */
+                <div className={`grid grid-cols-1 sm:grid-cols-2 ${settings.layout === 'grid' ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-6 items-start`}>
+                  {balancedColumns.map((colMessages, colIdx) => (
+                    <div key={colIdx} className="flex flex-col gap-6">
+                      {colMessages.map((msg, idx) => renderCard(msg, colIdx * 100 + idx))}
+                    </div>
+                  ))}
                 </div>
-              )}
-
-              {/* Grid Layout */}
-              {settings.layout === 'grid' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 items-start">
-                  {filteredMessages.map((msg) => {
-                    const fontCls =
-                      FONT_OPTIONS.find((f) => f.id === msg.font)?.fontClass || 'font-himelody';
-
-                    return (
-                      <div
-                        key={msg.id}
-                        onClick={() => setSelectedMessage(msg)}
-                        className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all p-5 flex flex-col justify-between cursor-pointer hover:border-slate-300"
-                      >
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-2xl">{msg.sticker}</span>
-                            <span className="font-bold text-sm text-slate-800 font-jua">
-                              {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}
-                            </span>
-                          </div>
-                          <span className="text-[11px] text-slate-400">{msg.createdAt.split(' ')[0]}</span>
-                        </div>
-                        <p className={`text-base text-slate-700 leading-relaxed ${fontCls} my-2 whitespace-pre-wrap break-keep`}>
-                          {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
-                        </p>
-                        <div className="pt-2.5 border-t border-slate-100 mt-2 flex items-center justify-between text-xs">
-                          {onEditMessage && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onEditMessage(msg);
-                              }}
-                              className="text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 cursor-pointer hover:underline"
-                            >
-                              <Pencil className="w-3 h-3" />
-                              <span>수정하기</span>
-                            </button>
-                          )}
-                          <span className="text-xs text-rose-500 font-bold hover:underline ml-auto">
-                            자세히 보기 →
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Polaroid Layout */}
-              {settings.layout === 'polaroid' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-start">
-                  {filteredMessages.map((msg, index) => {
-                    const colorConf = NOTE_COLORS[msg.color] || NOTE_COLORS.yellow;
-                    const fontCls =
-                      FONT_OPTIONS.find((f) => f.id === msg.font)?.fontClass || 'font-himelody';
-                    const rot = ((index % 6) - 3) * 1.5;
-
-                    return (
-                      <div
-                        key={msg.id}
-                        style={{ transform: `rotate(${rot}deg)` }}
-                        onClick={() => setSelectedMessage(msg)}
-                        className="bg-white p-3.5 pb-5 rounded-2xl shadow-md hover:shadow-xl hover:scale-105 hover:z-20 transition-all cursor-pointer border border-slate-200/80 flex flex-col group justify-between"
-                      >
-                        {/* Polaroid inner frame: min-h-[170px] without rigid aspect ratio or clipping */}
-                        <div
-                          className={`p-4 rounded-xl ${colorConf.bg} min-h-[170px] flex flex-col justify-between relative border border-black/5 shadow-2xs`}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-2xl drop-shadow-2xs">{msg.sticker}</span>
-                            <div className="flex items-center gap-1">
-                              {onEditMessage && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onEditMessage(msg);
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 p-1 rounded-md bg-white/80 hover:bg-white text-slate-700 hover:text-amber-600 shadow-2xs transition-all cursor-pointer"
-                                  title="수정하기"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedMessage(msg);
-                                }}
-                                className="opacity-0 group-hover:opacity-100 p-1 rounded-md bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 shadow-2xs transition-all cursor-pointer"
-                                title="자세히 보기"
-                              >
-                                <Maximize2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Full note content: completely visible without line-clamp truncation */}
-                          <p
-                            className={`text-sm sm:text-[15px] leading-relaxed text-slate-800 ${fontCls} my-1 whitespace-pre-wrap break-keep`}
-                          >
-                            {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
-                          </p>
-
-                          <div className="mt-2 text-right">
-                            <span className="text-[10px] text-black/40 font-mono">
-                              {msg.createdAt.split(' ')[0]}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Polaroid handwritten caption */}
-                        <div className="mt-3 px-1 text-center font-poorstory font-bold text-base text-slate-700">
-                          - {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}의 마음 -
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Corkboard Layout */}
-              {settings.layout === 'corkboard' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-7 items-start">
-                  {filteredMessages.map((msg, index) => {
-                    const colorConf = NOTE_COLORS[msg.color] || NOTE_COLORS.yellow;
-                    const fontCls =
-                      FONT_OPTIONS.find((f) => f.id === msg.font)?.fontClass || 'font-himelody';
-                    const rot = ((index % 5) - 2) * 2;
-
-                    return (
-                      <div
-                        key={msg.id}
-                        style={{ transform: `rotate(${rot}deg)` }}
-                        onClick={() => setSelectedMessage(msg)}
-                        className={`group relative p-5 pt-6 rounded-xl ${colorConf.bg} ${colorConf.border} border-2 shadow-lg hover:shadow-2xl hover:scale-105 transition-all cursor-pointer flex flex-col justify-between min-h-[190px]`}
-                      >
-                        {/* Pushpin at top center */}
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[#DE7272] shadow-md border-2 border-white flex items-center justify-center text-[10px] text-white font-bold">
-                          📌
-                        </div>
-
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-2xl">{msg.sticker}</span>
-                          <div className="flex items-center gap-1.5">
-                            {onEditMessage && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onEditMessage(msg);
-                                }}
-                                className="opacity-0 group-hover:opacity-100 p-1 rounded-md bg-white/80 hover:bg-white text-slate-700 hover:text-amber-600 shadow-2xs transition-all cursor-pointer"
-                                title="수정하기"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedMessage(msg);
-                              }}
-                              className="opacity-0 group-hover:opacity-100 p-1 rounded-md bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 shadow-2xs transition-all cursor-pointer"
-                              title="자세히 보기"
-                            >
-                              <Maximize2 className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              {msg.createdAt.split(' ')[0]}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Full message content without line-clamp truncation */}
-                        <p className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 whitespace-pre-wrap break-keep`}>
-                          {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
-                        </p>
-
-                        <div className="pt-2 border-t border-black/10 flex justify-between items-center text-xs">
-                          <span className="font-bold text-slate-900 font-jua">
-                            To. {studentName}
-                          </span>
-                          <span className="font-bold text-slate-700 font-jua">
-                            From. {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+              ) : (
+                /* Standard Chronological / Author Row Grid */
+                <div className={`grid grid-cols-1 sm:grid-cols-2 ${settings.layout === 'grid' ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-6 items-start`}>
+                  {filteredMessages.map((msg, index) => renderCard(msg, index))}
                 </div>
               )}
             </div>

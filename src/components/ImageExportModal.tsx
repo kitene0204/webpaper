@@ -223,7 +223,7 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({
               <div className="p-3 bg-[#FFFDE8] rounded-xl border border-[#FFCA88] text-[#6d4411] text-xs flex items-start gap-2">
                 <Sparkles className="w-4 h-4 text-[#DE7272] shrink-0 mt-0.5" />
                 <div>
-                  <strong>활용 팁:</strong> 이미지로 저장한 뒤 학교 학급 밴드, 카카오톡, 또는 A4 크기로 인쇄하여 예쁜 액자에 담아 선물하면 평생 잊지 못할 선물이 됩니다!
+                  <strong>인쇄 팁:</strong> A3 크기(또는 A4)로 인쇄하시면 짧은 편지와 긴 편지가 한 장에 시원하게 꽉 차서 멋진 선물이 됩니다! 인쇄 대화상자에서 용지 크기를 <strong>A3</strong>로 지정해주세요.
                 </div>
               </div>
             </div>
@@ -245,11 +245,11 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({
             <button
               type="button"
               onClick={() => window.print()}
-              className="px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-              title="A4 인쇄 또는 PDF 파일로 저장하기"
+              className="px-3.5 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+              title="A3 또는 A4 인쇄 / PDF 파일로 저장하기"
             >
-              <Printer className="w-3.5 h-3.5 text-slate-500" />
-              <span>A4 인쇄/PDF</span>
+              <Printer className="w-3.5 h-3.5 text-indigo-600" />
+              <span>A3 / A4 인쇄 (PDF)</span>
             </button>
 
             <button

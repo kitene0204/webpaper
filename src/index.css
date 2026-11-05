@@ -107,8 +107,12 @@
   pointer-events: none;
 }
 
-/* Print styling for direct high-quality A4 printing */
+/* Print styling for direct high-quality A3/A4 printing */
 @media print {
+  @page {
+    size: landscape;
+    margin: 8mm;
+  }
   body * {
     visibility: hidden;
   }
@@ -125,5 +129,6 @@
     margin: 0 !important;
     box-shadow: none !important;
     border: none !important;
+    border-radius: 0 !important;
   }
 }
