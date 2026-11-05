@@ -828,6 +828,55 @@ export class GasService {
     return true;
   }
 
+  /**
+   * Update an existing message (author name, content, sticker, color, font)
+   */
+  public static async updateMessage(
+    studentName: string,
+    messageId: string,
+    updates: Partial<Omit<Message, 'id' | 'studentName'>>
+  ): Promise<{ success: boolean; message?: Message }> {
+    if (this.isConnected()) {
+      try {
+        await fetch(this.gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'updateMessage',
+            studentName,
+            id: messageId,
+            messageId,
+            author: updates.author,
+            content: updates.content,
+            sticker: updates.sticker,
+            color: updates.color,
+            font: updates.font,
+            isSecret: updates.isSecret,
+          }),
+        });
+      } catch (err) {
+        console.warn('GAS updateMessage network error, saved to local cache', err);
+      }
+    }
+
+    const current = this.getLocalMessagesForStudent(studentName);
+    let updatedMessage: Message | undefined;
+    const nextMessages = current.map((m) => {
+      if (m.id === messageId) {
+        updatedMessage = { ...m, ...updates };
+        return updatedMessage;
+      }
+      return m;
+    });
+
+    if (updatedMessage) {
+      this.saveLocalMessagesForStudent(studentName, nextMessages);
+      return { success: true, message: updatedMessage };
+    }
+
+    return { success: false };
+  }
+
   // --- Settings Persistence & Sync ---
   public static getLocalSettings(): Partial<RollingSettings> | null {
     if (typeof window === 'undefined') return null;

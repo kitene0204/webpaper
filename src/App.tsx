@@ -52,6 +52,7 @@ export default function App() {
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
   const [isImageExportOpen, setIsImageExportOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
 
   // Active theme object
   const currentTheme = THEMES[settings.theme] || THEMES.birthday;
@@ -279,6 +280,25 @@ export default function App() {
     );
   };
 
+  // Update message (author name, content, sticker, color, font)
+  const handleUpdateMessage = async (
+    msgId: string,
+    updates: Partial<Omit<Message, 'id' | 'studentName'>>
+  ) => {
+    if (!currentStudent) return;
+    const res = await GasService.updateMessage(currentStudent.name, msgId, updates);
+    if (res.success && res.message) {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, ...updates } : m))
+      );
+    }
+  };
+
+  const handleOpenEditMessage = (msg: Message) => {
+    setEditingMessage(msg);
+    setIsComposeModalOpen(true);
+  };
+
   // Handle saving design/theme settings with instant sync to recipient student & persistence
   const handleSaveThemeSettings = async (newSettings: RollingSettings, newRecipientName?: string) => {
     const targetName = (newRecipientName || newSettings.targetStudentName || '').trim();
@@ -387,7 +407,10 @@ export default function App() {
         onOpenThemeModal={() => setIsThemeModalOpen(true)}
         onOpenStudentModal={() => setIsStudentModalOpen(true)}
         onOpenGasModal={() => setIsGasModalOpen(true)}
-        onOpenComposeModal={() => setIsComposeModalOpen(true)}
+        onOpenComposeModal={() => {
+          setEditingMessage(null);
+          setIsComposeModalOpen(true);
+        }}
         onOpenShareModal={() => setIsShareModalOpen(true)}
         onExportImage={() => setIsImageExportOpen(true)}
         onToggleView={() => {}}
@@ -446,7 +469,11 @@ export default function App() {
             messages={messages}
             currentTheme={currentTheme}
             settings={settings}
-            onOpenCompose={() => setIsComposeModalOpen(true)}
+            onOpenCompose={() => {
+              setEditingMessage(null);
+              setIsComposeModalOpen(true);
+            }}
+            onEditMessage={handleOpenEditMessage}
             onDeleteMessage={handleDeleteMessage}
             onExportImage={() => setIsImageExportOpen(true)}
           />
@@ -479,12 +506,17 @@ export default function App() {
 
       <MessageComposerModal
         isOpen={isComposeModalOpen}
-        onClose={() => setIsComposeModalOpen(false)}
+        onClose={() => {
+          setIsComposeModalOpen(false);
+          setEditingMessage(null);
+        }}
         students={students}
         currentStudent={currentStudent}
         currentTheme={currentTheme}
         settings={settings}
         onSubmitMessage={handleAddMessage}
+        editingMessage={editingMessage}
+        onUpdateMessage={handleUpdateMessage}
       />
 
       <GoogleAppsScriptModal

@@ -164,6 +164,16 @@ function doPost(e) {
         return jsonResponse({ success: deleted, messageId: messageId });
       }
 
+      case 'updateMessage': {
+        const studentName = (payload.studentName || '').trim();
+        const messageId = payload.id || payload.messageId;
+        if (!studentName || !messageId) {
+          return jsonResponse({ success: false, error: '학생 이름과 메시지 ID가 필요합니다.' });
+        }
+        const updated = updateStudentMessage(studentName, messageId, payload);
+        return jsonResponse({ success: updated, messageId: messageId, studentName: studentName });
+      }
+
       case 'ping':
         return jsonResponse({ 
           success: true, 
@@ -328,6 +338,32 @@ function deleteStudentMessage(studentName, messageId) {
   for (let i = 0; i < idValues.length; i++) {
     if (String(idValues[i][0]) === String(messageId)) {
       sheet.deleteRow(i + 2);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function updateStudentMessage(studentName, messageId, updates) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(studentName);
+  if (!sheet) return false;
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return false;
+
+  const idValues = sheet.getRange(2, 8, lastRow - 1, 1).getValues();
+  for (let i = 0; i < idValues.length; i++) {
+    if (String(idValues[i][0]) === String(messageId)) {
+      const rowIndex = i + 2;
+      // HEADER_COLUMNS: [0:작성일시, 1:작성자, 2:내용, 3:스티커, 4:색상, 5:글꼴, 6:비밀글, 7:ID]
+      if (updates.author !== undefined) sheet.getRange(rowIndex, 2).setValue(updates.author);
+      if (updates.content !== undefined) sheet.getRange(rowIndex, 3).setValue(updates.content);
+      if (updates.sticker !== undefined) sheet.getRange(rowIndex, 4).setValue(updates.sticker);
+      if (updates.color !== undefined) sheet.getRange(rowIndex, 5).setValue(updates.color);
+      if (updates.font !== undefined) sheet.getRange(rowIndex, 6).setValue(updates.font);
+      if (updates.isSecret !== undefined) sheet.getRange(rowIndex, 7).setValue(updates.isSecret ? true : false);
       return true;
     }
   }

@@ -8,7 +8,9 @@ import {
   Type, 
   Palette, 
   Heart, 
-  HelpCircle 
+  HelpCircle,
+  Pencil,
+  Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Student, RollingTheme, Message, FontId, RollingSettings } from '../types';
@@ -22,6 +24,8 @@ interface MessageComposerModalProps {
   currentTheme: RollingTheme;
   settings?: RollingSettings;
   onSubmitMessage: (msg: Omit<Message, 'id' | 'createdAt'>) => Promise<void>;
+  editingMessage?: Message | null;
+  onUpdateMessage?: (messageId: string, updatedData: Partial<Omit<Message, 'id' | 'studentName'>>) => Promise<void>;
 }
 
 const NICKNAME_ADJECTIVES = [
@@ -50,12 +54,11 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
   currentTheme,
   settings,
   onSubmitMessage,
+  editingMessage,
+  onUpdateMessage,
 }) => {
   const [recipient, setRecipient] = useState<string>(currentStudent?.name || '');
-  const [isHonorific, setIsHonorific] = useState<boolean>(() => {
-    if (settings?.honorificMode) return true;
-    return isHonorificTarget(currentStudent?.name || '');
-  });
+  const [isHonorific, setIsHonorific] = useState<boolean>(false);
   const [author, setAuthor] = useState<string>('');
   const [content, setContent] = useState<string>('');
   const [color, setColor] = useState<string>('butter');
@@ -67,27 +70,43 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
   const [showPrompts, setShowPrompts] = useState(false);
 
   useEffect(() => {
-    if (currentStudent) {
-      setRecipient(currentStudent.name);
-      if (settings?.honorificMode || isHonorificTarget(currentStudent.name)) {
-        setIsHonorific(true);
+    if (isOpen) {
+      if (editingMessage) {
+        setRecipient(editingMessage.studentName || currentStudent?.name || '');
+        setAuthor(editingMessage.author === '익명의 친구' ? '' : editingMessage.author);
+        setContent(editingMessage.content || '');
+        setColor(editingMessage.color || 'butter');
+        setFont(editingMessage.font || 'himelody');
+        setSelectedSticker(editingMessage.sticker || currentTheme.stickers[0]?.emoji || '💌');
+        setIsHonorific(
+          Boolean(settings?.honorificMode) ||
+          isHonorificTarget(editingMessage.studentName || currentStudent?.name || '')
+        );
+      } else {
+        const defaultName = currentStudent?.name || (students[0]?.name ?? '');
+        setRecipient(defaultName);
+        setAuthor('');
+        setContent('');
+        setColor('butter');
+        setFont('himelody');
+        if (currentTheme.stickers.length > 0) {
+          setSelectedSticker(currentTheme.stickers[0].emoji);
+        }
+        setIsHonorific(
+          Boolean(settings?.honorificMode) ||
+          isHonorificTarget(defaultName)
+        );
       }
     }
-  }, [currentStudent, settings?.honorificMode]);
+  }, [isOpen, editingMessage, currentStudent, currentTheme, students, settings?.honorificMode]);
 
   useEffect(() => {
-    if (recipient) {
+    if (recipient && !editingMessage) {
       if (isHonorificTarget(recipient)) {
         setIsHonorific(true);
       }
     }
-  }, [recipient]);
-
-  useEffect(() => {
-    if (currentTheme.stickers.length > 0) {
-      setSelectedSticker(currentTheme.stickers[0].emoji);
-    }
-  }, [currentTheme]);
+  }, [recipient, editingMessage]);
 
   if (!isOpen) return null;
 
@@ -120,14 +139,26 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSubmitMessage({
-        studentName: recipient,
-        author: author.trim() || '익명의 친구',
-        content: content.trim(),
-        sticker: selectedSticker,
-        color,
-        font,
-      });
+      const trimmedAuthor = author.trim() || '익명의 친구';
+
+      if (editingMessage && onUpdateMessage) {
+        await onUpdateMessage(editingMessage.id, {
+          author: trimmedAuthor,
+          content: content.trim(),
+          sticker: selectedSticker,
+          color,
+          font,
+        });
+      } else {
+        await onSubmitMessage({
+          studentName: recipient,
+          author: trimmedAuthor,
+          content: content.trim(),
+          sticker: selectedSticker,
+          color,
+          font,
+        });
+      }
 
       // Confetti celebratory burst
       confetti({
@@ -137,6 +168,7 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
       });
 
       setContent('');
+      setAuthor('');
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -153,26 +185,34 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
         {/* Header */}
         <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-[#DE7272]/15 via-[#FFCA88]/25 to-[#FFF6A9]/40">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#DE7272] text-white flex items-center justify-center text-xl shadow-xs">
-              {isHonorific ? '🎓' : '✏️'}
+            <div className={`w-10 h-10 rounded-2xl ${editingMessage ? 'bg-amber-500' : 'bg-[#DE7272]'} text-white flex items-center justify-center text-xl shadow-xs transition-colors`}>
+              {editingMessage ? '✏️' : isHonorific ? '🎓' : '💌'}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-slate-800 font-jua">
-                  {isHonorific ? '존댓말(경어체) 메시지 남기기' : '롤링페이퍼 메시지 남기기'}
+                  {editingMessage 
+                    ? '메시지 수정하기' 
+                    : isHonorific 
+                      ? '존댓말(경어체) 메시지 남기기' 
+                      : '롤링페이퍼 메시지 남기기'}
                 </h2>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  isHonorific 
-                    ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' 
-                    : 'bg-[#FFF6A9] text-[#6d4411] border border-[#FFCA88]'
+                  editingMessage
+                    ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                    : isHonorific 
+                      ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' 
+                      : 'bg-[#FFF6A9] text-[#6d4411] border border-[#FFCA88]'
                 }`}>
-                  {isHonorific ? '선생님/어른께' : '친구에게'}
+                  {editingMessage ? '수정 모드' : isHonorific ? '선생님/어른께' : '친구에게'}
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                {isHonorific 
-                  ? '선생님, 부모님, 어른께 따뜻한 감사와 존경의 마음을 전해보세요' 
-                  : '친구에게 따뜻한 마음과 추억의 한마디를 적어보세요'}
+                {editingMessage
+                  ? '작성자 이름(익명 탈출)이나 전하고 싶은 메시지 내용을 다듬어보세요'
+                  : isHonorific 
+                    ? '선생님, 부모님, 어른께 따뜻한 감사와 존경의 마음을 전해보세요' 
+                    : '친구에게 따뜻한 마음과 추억의 한마디를 적어보세요'}
               </p>
             </div>
           </div>
@@ -255,9 +295,23 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
                 type="text"
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
-                placeholder={isHonorific ? '예: 제자 민준 올림, 든든한 짝꿍 (비워두면 익명)' : '예: 짝꿍 민준이, 친절한 토끼 (비워두면 익명)'}
+                placeholder={
+                  editingMessage 
+                    ? '예: 김하은, 민준 (익명에서 본인 이름으로 수정)' 
+                    : isHonorific 
+                      ? '예: 제자 민준 올림, 든든한 짝꿍 (비워두면 익명)' 
+                      : '예: 짝꿍 민준이, 친절한 토끼 (비워두면 익명)'
+                }
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-[#DE7272]"
               />
+              {editingMessage && (
+                <p className="text-[11px] text-amber-800 bg-amber-50/80 rounded-xl p-2 border border-amber-200/80 mt-1.5 flex items-start gap-1.5">
+                  <span className="shrink-0">💡</span>
+                  <span>
+                    실수로 <strong>'익명의 친구'</strong>로 보냈다면, 여기에 실제 이름이나 별명을 적고 [수정 완료하기]를 누르면 즉시 변경됩니다!
+                  </span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -418,10 +472,14 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || !content.trim() || !recipient.trim()}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#DE7272] to-[#FFCA88] hover:from-[#c95d5d] hover:to-[#f0b56e] disabled:opacity-50 text-white font-bold text-base shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+              className={`w-full py-3.5 rounded-2xl ${
+                editingMessage 
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-amber-500/20' 
+                  : 'bg-gradient-to-r from-[#DE7272] to-[#FFCA88] hover:from-[#c95d5d] hover:to-[#f0b56e]'
+              } disabled:opacity-50 text-white font-bold text-base shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer`}
             >
-              <Send className="w-4 h-4" />
-              <span>롤링페이퍼에 부착하기!</span>
+              {editingMessage ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+              <span>{editingMessage ? '수정 완료하기' : '롤링페이퍼에 부착하기!'}</span>
             </button>
           </div>
 

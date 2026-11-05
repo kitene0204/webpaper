@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { 
   X, 
   Download, 
@@ -8,7 +8,8 @@ import {
   Sparkles, 
   Printer, 
   Camera, 
-  AlertCircle 
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 import { Student, RollingTheme, RollingSettings } from '../types';
 
@@ -55,20 +56,36 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({
         throw new Error('롤링페이퍼 보드 요소를 찾을 수 없습니다.');
       }
 
-      // Small delay to allow fonts and icons to settle
-      await new Promise((r) => setTimeout(r, 200));
+      // Small delay to allow fonts and decorative stickers to settle
+      await new Promise((r) => setTimeout(r, 250));
 
-      const canvas = await html2canvas(element, {
-        scale: 2, // 2x high resolution for crisp print and text
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: null,
-        logging: false,
-        scrollX: 0,
-        scrollY: 0,
-      });
+      let url = '';
+      try {
+        url = await toPng(element, {
+          cacheBust: true,
+          pixelRatio: 2, // 2x high resolution for crisp print and text
+          filter: (node) => {
+            if (node instanceof HTMLElement && node.getAttribute('data-html2canvas-ignore') === 'true') {
+              return false;
+            }
+            return true;
+          },
+        });
+      } catch (firstErr) {
+        console.warn('toPng default failed, trying fallback with skipFonts: true', firstErr);
+        url = await toPng(element, {
+          cacheBust: true,
+          pixelRatio: 2,
+          skipFonts: true,
+          filter: (node) => {
+            if (node instanceof HTMLElement && node.getAttribute('data-html2canvas-ignore') === 'true') {
+              return false;
+            }
+            return true;
+          },
+        });
+      }
 
-      const url = canvas.toDataURL('image/png');
       setDataUrl(url);
     } catch (err: any) {
       console.error('Image capture error', err);
@@ -148,9 +165,19 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({
           )}
 
           {error && (
-            <div className="p-4 bg-rose-50 rounded-2xl border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+            <div className="p-4 bg-rose-50 rounded-2xl border border-rose-200 text-rose-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{error}</span>
+              </div>
+              <button
+                type="button"
+                onClick={generateImage}
+                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>다시 시도하기</span>
+              </button>
             </div>
           )}
 
