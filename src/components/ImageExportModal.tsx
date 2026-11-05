@@ -59,37 +59,51 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({
       // Small delay to allow fonts and decorative stickers to settle
       await new Promise((r) => setTimeout(r, 250));
 
+      const filterIgnored = (node: Node) => {
+        if (node instanceof Element) {
+          const ignore = node.getAttribute('data-html2canvas-ignore') || node.getAttribute('data-ignore-export');
+          if (ignore === 'true') {
+            return false;
+          }
+        }
+        return true;
+      };
+
       let url = '';
       try {
         url = await toPng(element, {
           cacheBust: true,
           pixelRatio: 2, // 2x high resolution for crisp print and text
-          filter: (node) => {
-            if (node instanceof HTMLElement && node.getAttribute('data-html2canvas-ignore') === 'true') {
-              return false;
-            }
-            return true;
-          },
+          filter: filterIgnored,
         });
       } catch (firstErr) {
         console.warn('toPng default failed, trying fallback with skipFonts: true', firstErr);
-        url = await toPng(element, {
-          cacheBust: true,
-          pixelRatio: 2,
-          skipFonts: true,
-          filter: (node) => {
-            if (node instanceof HTMLElement && node.getAttribute('data-html2canvas-ignore') === 'true') {
-              return false;
-            }
-            return true;
-          },
-        });
+        try {
+          url = await toPng(element, {
+            cacheBust: true,
+            pixelRatio: 1.5,
+            skipFonts: true,
+            filter: filterIgnored,
+          });
+        } catch (secondErr) {
+          console.warn('toPng 1.5x failed, trying 1x standard resolution', secondErr);
+          url = await toPng(element, {
+            cacheBust: true,
+            pixelRatio: 1,
+            skipFonts: true,
+            filter: filterIgnored,
+          });
+        }
+      }
+
+      if (!url || !url.startsWith('data:image/')) {
+        throw new Error('이미지 데이터를 생성하지 못했습니다. 다시 시도해주세요.');
       }
 
       setDataUrl(url);
     } catch (err: any) {
       console.error('Image capture error', err);
-      setError(err.message || '이미지 생성 중 오류가 발생했습니다.');
+      setError(err?.message || '이미지 생성 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -228,6 +242,16 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({
           </button>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              title="A4 인쇄 또는 PDF 파일로 저장하기"
+            >
+              <Printer className="w-3.5 h-3.5 text-slate-500" />
+              <span>A4 인쇄/PDF</span>
+            </button>
+
             <button
               type="button"
               disabled={loading || !dataUrl}
