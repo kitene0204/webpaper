@@ -1,4 +1,5 @@
 import { Student, Message, RollingSettings } from '../types';
+import { isHonorificTarget } from '../constants/themes';
 
 const STORAGE_KEY_GAS_URL = 'rolling_gas_app_url';
 const STORAGE_KEY_STUDENTS = 'rolling_local_students_v2';
@@ -440,7 +441,8 @@ export class GasService {
     const params = new URLSearchParams();
 
     const currentSettings = customSettings || this.getLocalSettings() || {};
-    const recipient = (studentName || currentSettings.targetStudentName || '').trim();
+    const currentTarget = (currentSettings.targetStudentName || '').trim();
+    const recipient = (studentName || currentTarget).trim();
 
     if (recipient) {
       params.set('to', recipient);
@@ -448,9 +450,16 @@ export class GasService {
     if (currentSettings.theme) {
       params.set('theme', currentSettings.theme);
     }
+
+    // Title adaptation: If the target changed, adapt the name in the title
     if (currentSettings.boardTitle) {
-      params.set('title', currentSettings.boardTitle);
+      let title = currentSettings.boardTitle;
+      if (recipient && currentTarget && recipient !== currentTarget && title.includes(currentTarget)) {
+        title = title.split(currentTarget).join(recipient);
+      }
+      params.set('title', title);
     }
+
     if (currentSettings.schoolClass) {
       params.set('class', currentSettings.schoolClass);
     }
@@ -464,9 +473,18 @@ export class GasService {
     if (currentSettings.font) {
       params.set('font', currentSettings.font);
     }
-    if (typeof currentSettings.honorificMode === 'boolean') {
+
+    // Determine honorific mode for specific recipient
+    if (recipient) {
+      const isAdultOrTeacher = isHonorificTarget(recipient);
+      const isHon = recipient === currentTarget && typeof currentSettings.honorificMode === 'boolean'
+        ? currentSettings.honorificMode
+        : isAdultOrTeacher;
+      params.set('hon', isHon ? '1' : '0');
+    } else if (typeof currentSettings.honorificMode === 'boolean') {
       params.set('hon', currentSettings.honorificMode ? '1' : '0');
     }
+
     if (this.gasUrl) {
       params.set('gas', this.gasUrl);
     }
