@@ -697,9 +697,9 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                           </div>
                         </div>
 
-                        {/* Note Content */}
+                        {/* Note Content: completely visible without line-clamp truncation */}
                         <p
-                          className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 line-clamp-6 whitespace-pre-wrap break-keep`}
+                          className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 whitespace-pre-wrap break-keep`}
                         >
                           {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
                         </p>
@@ -721,7 +721,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
 
               {/* Grid Layout */}
               {settings.layout === 'grid' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 items-start">
                   {filteredMessages.map((msg) => {
                     const fontCls =
                       FONT_OPTIONS.find((f) => f.id === msg.font)?.fontClass || 'font-himelody';
@@ -741,7 +741,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                           </div>
                           <span className="text-[11px] text-slate-400">{msg.createdAt.split(' ')[0]}</span>
                         </div>
-                        <p className={`text-base text-slate-700 leading-relaxed ${fontCls} my-2 whitespace-pre-wrap line-clamp-5 break-keep`}>
+                        <p className={`text-base text-slate-700 leading-relaxed ${fontCls} my-2 whitespace-pre-wrap break-keep`}>
                           {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
                         </p>
                         <div className="pt-2.5 border-t border-slate-100 mt-2 flex items-center justify-between text-xs">
@@ -770,7 +770,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
 
               {/* Polaroid Layout */}
               {settings.layout === 'polaroid' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-start">
                   {filteredMessages.map((msg, index) => {
                     const colorConf = NOTE_COLORS[msg.color] || NOTE_COLORS.yellow;
                     const fontCls =
@@ -782,34 +782,56 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                         key={msg.id}
                         style={{ transform: `rotate(${rot}deg)` }}
                         onClick={() => setSelectedMessage(msg)}
-                        className="bg-white p-3 pb-5 rounded-lg shadow-md hover:shadow-xl hover:scale-105 hover:z-20 transition-all cursor-pointer border border-slate-200/80 flex flex-col group"
+                        className="bg-white p-3.5 pb-5 rounded-2xl shadow-md hover:shadow-xl hover:scale-105 hover:z-20 transition-all cursor-pointer border border-slate-200/80 flex flex-col group justify-between"
                       >
-                        {/* Polaroid inner frame */}
+                        {/* Polaroid inner frame: min-h-[170px] without rigid aspect ratio or clipping */}
                         <div
-                          className={`p-4 rounded-sm ${colorConf.bg} aspect-4/3 flex flex-col justify-between overflow-hidden relative border border-black/5`}
+                          className={`p-4 rounded-xl ${colorConf.bg} min-h-[170px] flex flex-col justify-between relative border border-black/5 shadow-2xs`}
                         >
-                          <div className="absolute top-2 right-2 flex items-center gap-1">
-                            {onEditMessage && (
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-2xl drop-shadow-2xs">{msg.sticker}</span>
+                            <div className="flex items-center gap-1">
+                              {onEditMessage && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditMessage(msg);
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 p-1 rounded-md bg-white/80 hover:bg-white text-slate-700 hover:text-amber-600 shadow-2xs transition-all cursor-pointer"
+                                  title="수정하기"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onEditMessage(msg);
+                                  setSelectedMessage(msg);
                                 }}
-                                className="opacity-0 group-hover:opacity-100 p-1 rounded-md bg-white/80 hover:bg-white text-slate-700 hover:text-amber-600 shadow-2xs transition-all cursor-pointer"
-                                title="수정하기"
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded-md bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 shadow-2xs transition-all cursor-pointer"
+                                title="자세히 보기"
                               >
-                                <Pencil className="w-3 h-3" />
+                                <Maximize2 className="w-3.5 h-3.5" />
                               </button>
-                            )}
-                            <span className="text-2xl">{msg.sticker}</span>
+                            </div>
                           </div>
+
+                          {/* Full note content: completely visible without line-clamp truncation */}
                           <p
-                            className={`text-sm text-slate-800 ${fontCls} mt-4 line-clamp-4 leading-relaxed break-keep`}
+                            className={`text-sm sm:text-[15px] leading-relaxed text-slate-800 ${fontCls} my-1 whitespace-pre-wrap break-keep`}
                           >
                             {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
                           </p>
+
+                          <div className="mt-2 text-right">
+                            <span className="text-[10px] text-black/40 font-mono">
+                              {msg.createdAt.split(' ')[0]}
+                            </span>
+                          </div>
                         </div>
+
                         {/* Polaroid handwritten caption */}
                         <div className="mt-3 px-1 text-center font-poorstory font-bold text-base text-slate-700">
                           - {searchQuery.trim() ? highlightMatch(msg.author, searchQuery) : msg.author}의 마음 -
@@ -822,7 +844,7 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
 
               {/* Corkboard Layout */}
               {settings.layout === 'corkboard' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-7">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-7 items-start">
                   {filteredMessages.map((msg, index) => {
                     const colorConf = NOTE_COLORS[msg.color] || NOTE_COLORS.yellow;
                     const fontCls =
@@ -857,13 +879,25 @@ export const RollingBoard: React.FC<RollingBoardProps> = ({
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedMessage(msg);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded-md bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 shadow-2xs transition-all cursor-pointer"
+                              title="자세히 보기"
+                            >
+                              <Maximize2 className="w-3.5 h-3.5" />
+                            </button>
                             <span className="text-[10px] text-slate-500 font-mono">
                               {msg.createdAt.split(' ')[0]}
                             </span>
                           </div>
                         </div>
 
-                        <p className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 line-clamp-5 break-keep`}>
+                        {/* Full message content without line-clamp truncation */}
+                        <p className={`text-base leading-relaxed ${colorConf.text} ${fontCls} my-2 whitespace-pre-wrap break-keep`}>
                           {searchQuery.trim() ? highlightMatch(msg.content, searchQuery) : msg.content}
                         </p>
 
